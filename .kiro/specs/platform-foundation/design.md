@@ -44,7 +44,7 @@
 - Any migration that creates business tables (each owning spec adds its own migration).
 
 ### Allowed Dependencies
-- Runtime: Node.js 22 LTS.
+- Runtime: Node.js 24 LTS.
 - Backing services: PostgreSQL with `pgvector`, Redis, Ollama (connectivity/config only; readiness checks Postgres + Redis).
 - Libraries: Fastify 5, Pino (bundled), `pg`, `pgvector`, `ioredis`, `zod`, `node-pg-migrate`, `close-with-grace`, Vitest, ESLint, Prettier, `tsx`.
 - Constraint: **exactly two datastores** (Postgres, Redis) — no third store may be introduced here or downstream.
@@ -106,7 +106,7 @@ graph TB
 
 | Layer | Choice / Version | Role in Feature | Notes |
 |-------|------------------|-----------------|-------|
-| Runtime | Node.js 22 LTS | Executes the service | Fastify 5 requires Node 20+ |
+| Runtime | Node.js 24 LTS | Executes the service | Fastify 5 requires Node 20+; 24 LTS supported into 2028 |
 | Language | TypeScript 5.x (strict, ESM) | Strong typing across the stack | `any` forbidden; `@/` path alias → `src/` |
 | Framework | Fastify 5.10.x | HTTP server, plugin host, request lifecycle hooks | Native Pino integration + `onRequest`/`onResponse` hooks |
 | Config validation | `zod` (^3.23 / v4) | Parse + validate `process.env` into a frozen typed `Config` | Runs before app construction |

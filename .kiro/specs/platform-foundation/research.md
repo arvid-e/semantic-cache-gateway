@@ -7,7 +7,7 @@
   - The stack is fixed by steering (Fastify + TypeScript, Pino, Postgres/`pgvector`, Redis, Ollama). The open decisions were the config-validation approach, the migration tool, the Redis client, `pgvector` type registration, and the test harness.
   - `pgvector` ships as an official npm package (`pgvector`, v0.3.x) with a `registerTypes(client)` helper for `node-postgres`; the `pgvector/pgvector:pg17` Docker image bundles the extension, so no custom Postgres build is needed.
   - `node-pg-migrate` is Postgres-specific, supports SQL migrations, and records applied migrations in a `pgmigrations` table in deterministic (timestamp-ordered) order — a direct match for Requirement 5.
-  - Fastify 5 (5.10.x) requires Node 20+ and is validated on Node 22 LTS; its native Pino integration and `onRequest`/`onResponse` hooks cover structured request logging (Req 3.4) and the request-context seam (Req 7) without extra frameworks.
+  - Fastify 5 (5.10.x) requires Node 20+ and runs on Node 24 LTS (chosen over 22 for a longer support runway into 2028); its native Pino integration and `onRequest`/`onResponse` hooks cover structured request logging (Req 3.4) and the request-context seam (Req 7) without extra frameworks.
 
 ## Research Log
 
