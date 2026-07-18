@@ -1,0 +1,64 @@
+# Implementation Plan
+
+- [ ] 1. Foundation: schema, config, types, and pricing
+- [ ] 1.1 Author the telemetry migration
+  - Add this spec's migration creating `request_telemetry` with the per-request metadata columns (tenant, provider, model, token counts, cache status, latency, failover fields, breaker state, topic-shift and verification outcomes, nullable estimated cost saved) plus indexes and a tenant foreign key, with no secret or raw-content columns
+  - Observable: running migrations creates `request_telemetry` with the metadata columns, the tenant/created-at and provider/cache-status indexes, and the tenant foreign key, and no column stores a credential, prompt, or response body
+  - _Requirements: 1.1_
+- [ ] 1.2 (P) Implement the telemetry config segment and shared types
+  - Validate the telemetry environment segment (offload mode, metrics path) and define the telemetry record, pricing entry, and cost-result types
+  - Observable: an invalid or missing telemetry setting fails plugin configuration naming the setting, a valid environment yields a typed config, and the record/pricing contracts are exported
+  - _Requirements: 5.2_
+  - _Boundary: Telemetry Config, Telemetry Types_
+- [ ] 1.3 (P) Implement the static pricing table
+  - Provide an in-repo pricing table of per-provider and per-model input and output token rates with a lookup that returns no entry for an unknown provider or model
+  - Observable: the lookup returns the input/output rates for a known provider and model and returns no entry for an unknown one
+  - _Requirements: 2.2, 2.5_
+  - _Boundary: Pricing Table_
+
+- [ ] 2. Core: cost estimation, metrics, and persistence
+- [ ] 2.1 (P) Implement the cost estimator
+  - Compute estimated cost saved for a cache hit as token usage times the provider/model rates, record zero for a live request, and record no computed saving without failing when the provider or model has no pricing entry, presenting estimates only
+  - Observable: a cache hit with a pricing entry yields tokens times rates, a live request yields zero, and a missing pricing entry yields no computed saving without throwing
+  - _Requirements: 2.1, 2.3, 2.4, 2.5_
+  - _Boundary: Cost Estimator_
+  - _Depends: 1.3_
+- [ ] 2.2 (P) Implement the Prometheus metrics registry and endpoint
+  - Define the metric series (request counts, cache status, latency distribution, token usage, estimated cost saved, topic-shift decisions, verification results, and the false-hit proxy series), an update from a telemetry record, and the scrapable metrics endpoint, using only bounded labels with no secrets or raw content
+  - Observable: the metrics endpoint returns Prometheus exposition text with the required series, an update from a record increments the correct series, and no label carries a secret or raw prompt/response
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 6.2_
+  - _Boundary: Metrics Registry_
+  - _Depends: 1.2_
+- [ ] 2.3 (P) Implement the telemetry repository
+  - Persist a telemetry record as a `request_telemetry` row with metadata only
+  - Observable: inserting a record persists a row with the expected metadata and no secret or raw-content value
+  - _Requirements: 1.1, 1.2, 6.1_
+  - _Boundary: Telemetry Repository_
+  - _Depends: 1.1, 1.2_
+- [ ] 2.4 Implement the non-blocking telemetry sink
+  - Implement the sink whose record call returns immediately and persists asynchronously via the repository (direct async by default, optional background-queue offload), swallowing and logging persistence errors so they never reach the client
+  - Observable: the record call returns without awaiting persistence, a repository failure is caught and logged without surfacing, and the background-queue mode enqueues the write when configured
+  - _Requirements: 1.4, 5.1, 5.2, 5.3_
+  - _Boundary: Telemetry Sink_
+  - _Depends: 2.3, 1.2_
+
+- [ ] 3. Integration: recorder, plugin, and observability
+- [ ] 3.1 Implement the recorder and register the telemetry plugin
+  - Implement the response-time recorder that snapshots the populated request context, computes the saving, updates metrics inline, and hands a metadata-only record to the sink without recomputing any upstream decision; register the plugin, expose the metrics endpoint unauthenticated, and attach the recorder to the completion route
+  - Observable: a completed request updates the metrics inline and enqueues a metadata-only telemetry write through the sink using only context values, and the metrics endpoint is scrapable without authentication
+  - _Requirements: 1.1, 1.2, 1.3, 5.1, 6.1_
+  - _Boundary: Recorder_
+  - _Depends: 2.1, 2.2, 2.4_
+- [ ] 3.2 (P) Provision the observability stack as code
+  - Add the Prometheus scrape config, the Grafana datasource and dashboard provisioning, the overview dashboard (total cost saved, latency distribution, cache hit rate over time) and the context-matching dashboard (topic-shift/verification breakdown and false-hit instrumentation), and the Prometheus and Grafana services in Docker Compose mounting these versioned files
+  - Observable: bringing up the stack runs Prometheus scraping the gateway metrics endpoint and Grafana auto-provisioning the datasource and both dashboards from the version-controlled files
+  - _Requirements: 4.1, 4.2, 4.3_
+  - _Boundary: Dashboards & Provisioning_
+  - _Depends: 2.2_
+
+- [ ] 4. Validation: telemetry integration tests
+- [ ] 4.1 Add integration tests against dockerized Postgres, Prometheus, and Grafana
+  - Exercise: a completed request persists one metadata-only telemetry row with no secrets; the metrics endpoint exposes the required series and Prometheus scrapes them; Grafana provisions the datasource and both dashboards on startup; and with the telemetry database unavailable, requests still succeed and responses are unaffected
+  - Observable: the integration suite passes, proving metadata-only persistence, metrics scraping, dashboard provisioning, and non-blocking failure isolation
+  - _Requirements: 1.1, 3.1, 3.2, 3.3, 4.3, 5.3, 6.1_
+  - _Depends: 3.1, 3.2_
