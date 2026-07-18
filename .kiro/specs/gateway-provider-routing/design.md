@@ -445,6 +445,11 @@ Structured logs via the shared logger with redaction; the revealed secret is nev
 
 ## Testing Strategy
 
+Tests are co-located with the file under test (see `structure.md`): unit tests as `<name>.test.ts`
+beside `<name>.ts`, integration tests as `<name>.integration.test.ts` beside the module they
+exercise. There is no separate `test/` tree; the two Vitest suites are selected by filename suffix,
+not by directory.
+
 ### Unit Tests
 - Schema validation: a valid payload passes; a missing `messages`, an unknown `provider`, or a bad param is rejected with a 400 and no provider call (1.2, 1.3, 2.2).
 - OpenAI adapter: maps `choices[0].message`, `finish_reason` → `FinishReason`, and `usage.*_tokens` → normalized usage (3.4, 4.1).
