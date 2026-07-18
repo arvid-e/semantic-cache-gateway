@@ -1,0 +1,11 @@
+{
+  // Build-only config: emits src/ to dist/ but excludes co-located tests
+  // so *.test.ts / *.integration.test.ts never land in the build output.
+  "extends": "./tsconfig.json",
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.integration.test.ts"
+  ]
+}

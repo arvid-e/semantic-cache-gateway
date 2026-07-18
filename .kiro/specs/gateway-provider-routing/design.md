@@ -266,7 +266,7 @@ Key decisions: Anthropic's `system` messages are lifted to the top-level `system
 
 ##### Service Interface
 ```typescript
-import type { ProviderName, ProviderSecret } from '@/modules/auth/types';
+import type { ProviderName, ProviderSecret } from '#src/modules/auth/types.js';
 
 type ChatRole = 'system' | 'user' | 'assistant';
 interface ChatMessage { role: ChatRole; content: string; }
@@ -415,7 +415,7 @@ interface CompletionService {
 ##### State Management
 ```typescript
 // Declaration merging on the foundation RequestContext (no foundation edit)
-declare module '@/platform/context/types' {
+declare module '#src/platform/context/types.js' {
   interface RequestContext {
     messages: ChatMessage[];                    // default []
     latestUserMessage: ChatMessage | null;      // default null

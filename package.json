@@ -15,24 +15,32 @@
   "type": "module",
   "main": "index.js",
   "imports": {
-    "#/*": "./src/*"
+    "#src/*": {
+      "types": "./src/*",
+      "default": "./dist/*"
+    }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "start": "node ./dist/index.js",
     "dev": "tsc && node ./dist/index.js",
     "lint": "eslint .",
     "lint:fix": "eslint ./src --fix",
-    "format": "prettier ./src --write"
+    "format": "prettier ./src --write",
+    "test": "vitest run --project unit",
+    "test:watch": "vitest --project unit",
+    "test:integration": "vitest run --project integration"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.1.1",
+    "@vitest/ui": "^4.1.10",
     "eslint": "^10.7.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.7.0",
     "prettier": "^3.9.5",
     "typescript": "^6.0.2",
-    "typescript-eslint": "^8.64.0"
+    "typescript-eslint": "^8.64.0",
+    "vitest": "^4.1.10"
   }
 }

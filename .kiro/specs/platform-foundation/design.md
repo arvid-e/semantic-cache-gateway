@@ -107,7 +107,7 @@ graph TB
 | Layer | Choice / Version | Role in Feature | Notes |
 |-------|------------------|-----------------|-------|
 | Runtime | Node.js 24 LTS | Executes the service | Fastify 5 requires Node 20+; 24 LTS supported into 2028 |
-| Language | TypeScript 5.x (strict, ESM) | Strong typing across the stack | `any` forbidden; `@/` path alias → `src/` |
+| Language | TypeScript 5.x (strict, ESM) | Strong typing across the stack | `any` forbidden; `#src/` subpath import → `src/` |
 | Framework | Fastify 5.10.x | HTTP server, plugin host, request lifecycle hooks | Native Pino integration + `onRequest`/`onResponse` hooks |
 | Config validation | `zod` (^3.23 / v4) | Parse + validate `process.env` into a frozen typed `Config` | Runs before app construction |
 | Logging | Pino (bundled with Fastify) | Structured, leveled logs with `redact` paths | Level + redaction from config |
@@ -127,7 +127,7 @@ graph TB
 ├── docker-compose.yml            # gateway + postgres(pgvector) + redis + ollama, healthchecks + depends_on
 ├── Dockerfile                    # build + entrypoint: run migrations then start server
 ├── package.json                  # scripts: dev, build, start, lint, format, test, test:integration, migrate
-├── tsconfig.json                 # strict, ESM, @/ path alias
+├── tsconfig.json                 # strict, ESM, #src/ subpath import → src/ (matches package.json "imports")
 ├── eslint.config.js              # ESLint flat config
 ├── .prettierrc                   # Prettier config
 ├── .env.example                  # documented env vars + defaults
@@ -139,7 +139,8 @@ graph TB
 │   ├── platform/
 │   │   ├── config/
 │   │   │   ├── schema.ts          # zod env schema + inferred Config type + sensitive-field marks
-│   │   │   └── load-config.ts     # loadConfig(): parse/validate process.env → frozen Config (throws on invalid)
+│   │   │   ├── load-config.ts     # loadConfig(): parse/validate process.env → frozen Config (throws on invalid)
+│   │   │   └── config.test.ts     # unit: loadConfig missing var named, sensitive value not printed, defaults applied
 │   │   ├── logger/
 │   │   │   └── logger-options.ts  # buildLoggerOptions(config): Pino level + redact paths + request serializers
 │   │   ├── db/
@@ -151,15 +152,15 @@ graph TB
 │   │   │   ├── types.ts            # RequestContext interface + enums (CacheStatus, BreakerState, ...) + createDefaultContext()
 │   │   │   └── context-plugin.ts   # decorateRequest('ctx') + onRequest hook assigning defaults
 │   │   └── health/
-│   │       └── health-plugin.ts    # GET /health/live, GET /health/ready (checks pg + redis)
+│   │       ├── health-plugin.ts    # GET /health/live, GET /health/ready (checks pg + redis)
+│   │       └── readiness.integration.test.ts  # integration: boot app vs dockerized PG+Redis; /health/ready 200; failure names dependency; vector extension present
 │   └── types/
 │       └── fastify.d.ts            # module augmentation: FastifyInstance.{config,pg,redis}, FastifyRequest.ctx
-└── test/
-    ├── unit/
-    │   └── config.test.ts          # loadConfig: missing var named, sensitive value not printed, defaults applied
-    └── integration/
-        └── readiness.test.ts       # boot app vs dockerized PG+Redis; /health/ready 200; failure names dependency; vector extension present
 ```
+
+Tests are co-located with the file under test (see `structure.md`): unit tests as `<name>.test.ts`,
+integration tests as `<name>.integration.test.ts`. There is no separate `test/` tree; the two Vitest
+suites are selected by filename suffix, not by directory.
 
 ### Modified Files
 - None — greenfield. All files above are created. This spec also seeds `structure.md`/`tech.md` conventions already recorded in steering.
@@ -259,8 +260,8 @@ Key decisions: readiness names the unhealthy dependency without exposing connect
 | 9.1 | build/lint/format/test commands | package.json | scripts | — |
 | 9.2 | Strict type checking, fail on errors | tsconfig, build script | `tsc --noEmit`/build | — |
 | 9.3 | Lint/format violations exit non-zero | eslint/prettier config | scripts | — |
-| 9.4 | Integration tests vs dockerized deps | Vitest integration | `readiness.test.ts` | Readiness |
-| 9.5 | ≥1 unit + ≥1 integration passing | test/unit, test/integration | `config.test.ts`, `readiness.test.ts` | — |
+| 9.4 | Integration tests vs dockerized deps | Vitest integration suite | `readiness.integration.test.ts` | Readiness |
+| 9.5 | ≥1 unit + ≥1 integration passing | co-located `*.test.ts` / `*.integration.test.ts` | `config.test.ts`, `readiness.integration.test.ts` | — |
 
 ## Components and Interfaces
 
@@ -500,7 +501,7 @@ function createDefaultContext(): RequestContext;
 
 // Extension by downstream specs (no foundation change):
 // declare module 'fastify' { interface FastifyRequest { ctx: RequestContext } }
-// declare module '@/platform/context/types' { interface RequestContext { messages?: ChatMessage[] } }
+// declare module '#src/platform/context/types.js' { interface RequestContext { messages?: ChatMessage[] } }
 ```
 - State model: one `RequestContext` per request, mutated in place by pipeline stages.
 - Persistence & consistency: in-memory, request-lifetime only.
@@ -584,7 +585,7 @@ function buildApp(config: Config): FastifyInstance; // registers foundation plug
 **Responsibilities & Constraints** (Req 9.1–9.5)
 - `package.json` scripts: `dev` (`tsx watch`), `build` (`tsc`), `start`, `lint`, `format`, `test`, `test:integration`, `migrate`.
 - Strict `tsconfig` (build fails on type errors); ESLint + Prettier exit non-zero on violations.
-- Vitest suites: unit (`config.test.ts`) and integration (`readiness.test.ts`) against dockerized Postgres + Redis, proving the harness works.
+- Vitest suites split by filename suffix (not directory): unit (`*.test.ts`, e.g. co-located `config.test.ts`) and integration (`*.integration.test.ts`, e.g. co-located `readiness.integration.test.ts`) against dockerized Postgres + Redis, proving the harness works.
 
 ## Error Handling
 

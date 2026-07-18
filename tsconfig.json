@@ -12,7 +12,7 @@
 
     // For nodejs:
     "lib": ["esnext"],
-    "types": ["node"],
+    "types": ["node", "vitest/globals"],
     // and npm install -D @types/node
 
     // Other Outputs
@@ -34,15 +34,13 @@
 
     // Recommended Options
     "strict": true,
-    "jsx": "react-jsx",
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
-    "skipLibCheck": true,
-
-    "paths": {
-      "#/*": ["./src/*"]
-    }
-  }
+    "skipLibCheck": true
+    // #/ path resolution comes from package.json "imports"; no tsconfig "paths" needed under nodenext
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
 }

@@ -54,6 +54,6 @@
 - [ ] 4.1 Add integration tests against dockerized Redis
   - Exercise: fire more concurrent requests than capacity for one tenant and assert exactly capacity are admitted; verify two tenants have independent allowances; confirm an over-limit request returns `429` with retry-after and rate-limit headers and is not forwarded; confirm liveness/readiness are never throttled; and confirm a throttled tenant is admitted again after the configured refill interval
   - Observable: the integration suite passes, proving atomic concurrency enforcement, per-tenant isolation, the `429` response contract, health-endpoint exemption, and time-based refill
-  - _File: test/integration/rate-limiting.test.ts_
+  - _File: src/modules/rate-limiting/rate-limiting.integration.test.ts_
   - _Requirements: 1.1, 1.3, 1.5, 2.2, 3.1, 4.1, 4.2_
   - _Depends: 3.2_

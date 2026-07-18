@@ -101,6 +101,6 @@
 - [ ] 4.1 Add integration tests against dockerized Postgres, Redis, and Ollama
   - Exercise: a repeated identical request returns an exact hit without calling the provider; a near-duplicate standalone prompt returns a semantic hit above threshold and goes live below it; a context-dependent follow-up matching an unrelated entry is rejected by verification and goes live while a genuinely aligned follow-up is accepted; one tenant's entries are never returned to another; and a miss populates both layers with the originating context, respects TTL, and can be invalidated
   - Observable: the integration suite passes, proving exact and semantic hits, context-aware acceptance and rejection, per-tenant isolation, and population/TTL/invalidation behavior end to end
-  - _File: test/integration/cache.test.ts_
+  - _File: src/modules/cache/cache.integration.test.ts_
   - _Requirements: 1.1, 1.2, 2.2, 3.1, 3.2, 3.3, 4.1, 4.3, 5.2, 6.1, 6.4, 6.5, 7.1, 7.3, 7.4_
   - _Depends: 3.4_
