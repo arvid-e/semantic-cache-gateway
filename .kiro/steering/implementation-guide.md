@@ -96,3 +96,64 @@ you implement caching and resilience, the final wiring in `src/app.ts` establish
   order above.
 - **Atomic Lua** (rate-limiting 2.1, resilience 2.1) — getting refill/transition logic right under concurrency.
 - **Anthropic adapter** (gateway 2.2) — system-message lifting, content-block concatenation, computed token totals.
+
+## Branch strategy (epic branches)
+
+**Model:** epic = spec, feature branch = one major task group. Do the epics in the build order above,
+**merging each epic to `main` before branching the next off the updated `main`** — this keeps the shared
+files (`src/app.ts`, `src/platform/context/types.ts`, `docker-compose.yml`) already present and avoids
+cross-epic conflicts. Naming: `epic/<spec>` and `feat/<spec-short>-<group>`.
+
+**Flow:** feature branch → PR into its epic (squash-merge); epic → `main` when the spec's Validation task
+passes (normal merge, or `/kiro-validate-impl <spec>` as an extra gate). `(P)` sub-tasks are just commits
+on the group's branch. Two optional trims: fold each `*-tests` branch into the preceding integration branch
+(33 → 26 branches); or split `feat/cache-orchestration` into per-layer branches (skeleton/semantic/verification/wiring).
+
+**7 epics, 33 feature branches:**
+
+### `epic/platform-foundation`
+- `feat/foundation-scaffold` — 1.1, 1.2
+- `feat/foundation-config-logging` — 2.1, 2.2
+- `feat/foundation-plugins` — 3.1, 3.2, 3.3, 3.4
+- `feat/foundation-integration` — 4.1, 4.2, 4.3
+- `feat/foundation-compose` — 5.1, 5.2
+- `feat/foundation-tests` — 6.1
+
+### `epic/auth-tenancy-credentials`
+- `feat/auth-foundation` — 1.1, 1.2, 1.3
+- `feat/auth-crypto` — 2.1, 2.2
+- `feat/auth-repositories` — 3.1
+- `feat/auth-services` — 4.1, 4.2, 4.3, 4.4
+- `feat/auth-integration` — 5.1, 5.2, 5.3, 5.4
+- `feat/auth-tests` — 6.1
+
+### `epic/gateway-provider-routing`
+- `feat/gateway-foundation` — 1.1, 1.2, 1.3, 1.4
+- `feat/gateway-adapters` — 2.1, 2.2, 2.3, 2.4
+- `feat/gateway-orchestration` — 3.1, 3.2
+- `feat/gateway-integration` — 4.1, 4.2
+- `feat/gateway-tests` — 5.1
+
+### `epic/rate-limiting`
+- `feat/ratelimit-foundation` — 1.1
+- `feat/ratelimit-core` — 2.1, 2.2, 2.3
+- `feat/ratelimit-integration` — 3.1, 3.2
+- `feat/ratelimit-tests` — 4.1
+
+### `epic/dual-layer-caching`
+- `feat/cache-foundation` — 1.1, 1.2, 1.3, 1.4
+- `feat/cache-core` — 2.1, 2.2, 2.3, 2.4, 2.5
+- `feat/cache-orchestration` — 3.1, 3.2, 3.3, 3.4
+- `feat/cache-tests` — 4.1
+
+### `epic/resilience-failover`
+- `feat/resilience-foundation` — 1.1, 1.2
+- `feat/resilience-core` — 2.1, 2.2
+- `feat/resilience-integration` — 3.1, 3.2, 3.3
+- `feat/resilience-tests` — 4.1
+
+### `epic/telemetry-analytics`
+- `feat/telemetry-foundation` — 1.1, 1.2, 1.3
+- `feat/telemetry-core` — 2.1, 2.2, 2.3, 2.4
+- `feat/telemetry-integration` — 3.1, 3.2
+- `feat/telemetry-tests` — 4.1
