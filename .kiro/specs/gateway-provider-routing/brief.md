@@ -25,10 +25,14 @@ The completion flow populates the shared request context (provider, model, param
 latency) that caching, resilience, and telemetry later hook into.
 
 ## Scope
-- **In**: `POST /v1/chat/completions`; provider-agnostic request schema + validation; provider
-  selection; `ProviderAdapter` interface; OpenAI/Anthropic/Ollama adapters using BYOK keys;
-  response normalization to a unified schema; population of the shared request context.
-- **Out**: caching (dual-layer-caching); retries/circuit breaker (resilience-failover);
+- **In**: `POST /v1/chat/completions`; provider-agnostic request schema + validation (accepts the
+  full `messages` conversation array); provider selection; `ProviderAdapter` interface;
+  OpenAI/Anthropic/Ollama adapters using BYOK keys; response normalization to a unified schema;
+  population of the shared request context — **including the conversation message list and, derived
+  from it, the latest user message and the last AI (assistant) response** so `dual-layer-caching`
+  can run topic-shift detection and context-chain verification.
+- **Out**: caching and any topic-shift / context-verification logic (dual-layer-caching consumes
+  the conversation context this spec exposes); retries/circuit breaker (resilience-failover);
   telemetry/metrics (telemetry-analytics); rate limiting (rate-limiting); streaming (stretch);
   additional providers.
 
@@ -50,7 +54,9 @@ latency) that caching, resilience, and telemetry later hook into.
 
 ## Existing Spec Touchpoints
 - **Extends**: platform-foundation (adds the completion route), auth-tenancy-credentials (consumes credential resolver).
-- **Adjacent**: the `ProviderAdapter` interface is shared with resilience-failover — design it for reuse.
+- **Adjacent**: the `ProviderAdapter` interface is shared with resilience-failover — design it for
+  reuse. The conversation context (message list + last AI response) placed in the request context is
+  the seam consumed by dual-layer-caching's context-aware matching — expose it, don't interpret it.
 
 ## Constraints
 - Exactly three providers: OpenAI, Anthropic, Ollama.

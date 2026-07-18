@@ -15,7 +15,11 @@ Every request is logged with structured metadata: provider, input/output token u
 status, latency, failover/breaker events, and the **estimated cost saved** for the customer
 (what they would have paid their provider had the cache not served the response). Metrics are
 exported to Prometheus and visualized in Grafana dashboards showing total cost saved, latency
-distribution, and cache hit rate over time.
+distribution, and cache hit rate over time. Telemetry also records the **context-aware matching
+outcome** from dual-layer-caching (topic-shift decision: standalone vs context-dependent;
+verification result: verified hit / verification-failed fallback / inconclusive fallback) so the
+**false-hit rate and detection effectiveness are measurable** — the evidence that the semantic
+cache beats the naive alternatives.
 
 ## Approach
 Persist per-request telemetry to Postgres (optionally offloaded via a BullMQ queue so logging
@@ -26,12 +30,15 @@ ship Grafana dashboards-as-code for the key views. Secrets never appear in telem
 
 ## Scope
 - **In**: structured per-request telemetry persistence; static pricing table + estimated-cost-saved
-  computation; Prometheus metrics export (request/cache/latency/token/savings series); Grafana
-  dashboards (total cost saved, latency distribution, cache hit rate over time); optional BullMQ
-  offload for non-blocking logging.
+  computation; Prometheus metrics export (request/cache/latency/token/savings series **plus
+  context-aware matching series: topic-shift decisions, verification outcomes, and false-hit-rate
+  instrumentation**); Grafana dashboards (total cost saved, latency distribution, cache hit rate
+  over time, **detection/verification outcome breakdown**); optional BullMQ offload for
+  non-blocking logging.
 - **Out**: gateway-side billing/invoicing/Stripe (out of scope); live pricing feeds; a custom
   client-facing frontend (Grafana is the dashboard; Postman/`curl` for the API); computing the
-  cache status itself (dual-layer-caching owns that signal).
+  cache status or the topic-shift/verification decision itself (dual-layer-caching owns those
+  signals — telemetry only records and aggregates them).
 
 ## Boundary Candidates
 - Telemetry schema & persistence (+ optional BullMQ offload)
@@ -44,8 +51,8 @@ ship Grafana dashboards-as-code for the key views. Secrets never appear in telem
 - Any billing or charging logic
 
 ## Upstream / Downstream
-- **Upstream**: gateway-provider-routing, dual-layer-caching, resilience-failover (reads their
-  request-context signals).
+- **Upstream**: gateway-provider-routing, dual-layer-caching (cache status **and detection/
+  verification outcome**), resilience-failover (reads their request-context signals).
 - **Downstream**: terminal for v1 — feeds a future Admin UI / dynamic-weighted-routing (stretch).
 
 ## Existing Spec Touchpoints

@@ -28,6 +28,29 @@ tested, and reviewed independently over a shared foundation.
   - Custom `/stats` frontend — superseded by the Prometheus + Grafana stack; a polished client UI is out of scope.
   - Python / Go — TypeScript + Fastify chosen for performance, schema validation, and a single-language stack.
 
+## Semantic-Matching Correctness Decision (owned by `dual-layer-caching`)
+Semantic caching on the latest user message alone produces **false cache hits** on
+context-dependent follow-ups ("what command should I run?", "yes", "teach me"); embedding the
+entire history kills the hit rate because histories become unique almost immediately. The chosen
+strategy is **cheap detection first, expensive verification only when needed**:
+1. **Embedding-based topic-shift detection** (near-free — reuses the embedding already computed):
+   cosine-compare the incoming user message against the **last AI response** (denser anchor than a
+   short follow-up). Low similarity → topic shifted → treat message as standalone. High similarity
+   → likely context-dependent → verify.
+2. **Context-chain verification on candidate matches** (MeanCache-style prior art): let semantic
+   search find a candidate first, then verify the candidate's original context aligns with the
+   current conversation before accepting the hit — confining the expensive check to promising cases.
+3. **Safety-biased fallback**: if detection is inconclusive or verification fails, skip the cache
+   and go live. A missed hit costs a little saving; a wrong cached answer costs correctness/trust.
+- **Rejected alternatives**: full-history embedding (too sparse to match past turn 1–2); a fixed
+  sliding window of last 2–3 turns (breaks on cascading reference chains where the anchor is
+  further back); AI refinement/condensation on every request (adds latency/cost to every request
+  including misses, where it is pure waste).
+- **Known limitation (documented, not hidden)**: very short, low-information follow-ups ("yes",
+  "ok") embed ambiguously regardless of technique — an inherent hard case (even MeanCache reports
+  non-zero false hits). Goal: measurably better than the naive alternatives, with instrumentation
+  (in `telemetry-analytics`) to prove it — not a perfect classifier.
+
 ## Scope
 - **In**: unified provider-agnostic chat endpoint; OpenAI/Anthropic/Ollama routing; BYOK
   (per-request header or stored encrypted per-tenant credentials); response normalization;
@@ -62,13 +85,18 @@ tested, and reviewed independently over a shared foundation.
   - **Provider adapter interface** is shared by `gateway-provider-routing` and `resilience-failover`.
   - **Credential retrieval** (per-request header vs stored encrypted) is owned by
     `auth-tenancy-credentials` and consumed by routing and failover.
+  - **Conversation context for semantic matching**: `gateway-provider-routing` must surface the
+    full message list (including the **last AI response**) into the request context, not just the
+    latest user message, so `dual-layer-caching` can run topic-shift detection and context-chain
+    verification. `telemetry-analytics` reads the detection/verification outcome to instrument the
+    false-hit rate.
 
 ## Specs (dependency order)
 - [ ] platform-foundation -- Fastify skeleton, config loading, Pino logging, Postgres+`pgvector` and Redis wiring, DB migrations, health endpoint, Docker Compose. Dependencies: none
 - [ ] auth-tenancy-credentials -- tenant model, gateway API-key authentication, encrypted provider-credential storage, minimal admin/provisioning API. Dependencies: platform-foundation
 - [ ] gateway-provider-routing -- `POST /v1/chat/completions`, provider-agnostic request schema, OpenAI/Anthropic/Ollama adapters, response normalization. Dependencies: platform-foundation, auth-tenancy-credentials
 - [ ] rate-limiting -- Redis-backed token-bucket per-tenant rate limiting middleware. Dependencies: platform-foundation, auth-tenancy-credentials
-- [ ] dual-layer-caching -- Redis exact-match + `pgvector` semantic cache using Ollama `nomic-embed-text`, configurable threshold, per-tenant isolation, cache-status signal. Dependencies: platform-foundation, gateway-provider-routing
+- [ ] dual-layer-caching -- Redis exact-match + `pgvector` semantic cache using Ollama `nomic-embed-text`, configurable threshold, per-tenant isolation, **context-aware matching (topic-shift detection + context-chain verification + safety-biased fallback)**, cache-status signal. Dependencies: platform-foundation, gateway-provider-routing
 - [ ] resilience-failover -- retry to a pre-configured secondary provider + per-provider/per-tenant circuit breaker with cooldown. Dependencies: platform-foundation, gateway-provider-routing, auth-tenancy-credentials
 - [ ] telemetry-analytics -- structured per-request telemetry, estimated cost saved, Prometheus metrics export + Grafana dashboards. Dependencies: gateway-provider-routing, dual-layer-caching, resilience-failover
 
