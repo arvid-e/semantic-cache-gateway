@@ -1,0 +1,84 @@
+# Implementation Plan
+
+- [ ] 1. Foundation: contracts, config, validation, and mapping
+- [ ] 1.1 Define the gateway contracts and shared adapter interface
+  - Define the provider-agnostic request type (full `messages` array, provider/model, common params), the normalized response type (content/role, token usage, resolved model, finish reason), the closed `FinishReason` union, the `ProviderAdapter` interface returning only the normalized response, and a `ProviderError` that carries no credential
+  - Observable: the request/response/adapter/error contracts are exported, the adapter's only return type is the normalized response, and the supported provider set is exactly three
+  - _Requirements: 1.4, 2.3, 3.1, 4.2, 4.4_
+- [ ] 1.2 (P) Implement the gateway config segment
+  - Validate the gateway environment segment (provider base URLs, request timeout, default max tokens, anthropic version) with fail-fast, secret-safe semantics; Ollama's base URL reuses the foundation setting
+  - Observable: an invalid or missing gateway setting fails plugin configuration naming the setting, and a valid environment yields a typed read-only gateway config
+  - _Requirements: 3.4, 3.5_
+  - _Boundary: Gateway Config_
+- [ ] 1.3 (P) Implement request and response schema validation
+  - Author the boundary JSON Schema for the provider-agnostic request (conversation `messages` array, provider/model selection, generation params) and the normalized response, rejecting invalid input before any provider call
+  - Observable: a valid payload passes while a missing `messages` array, an unknown provider, or an out-of-range param is rejected with a client error and no provider is called
+  - _Requirements: 1.2, 1.3, 1.4, 2.2, 3.5_
+  - _Boundary: Request Schema_
+  - _Depends: 1.1_
+- [ ] 1.4 (P) Implement finish-reason and token-usage mapping helpers
+  - Provide shared helpers mapping each provider's finish reason into the `FinishReason` union (unknown → other) and computing normalized token usage, including summed totals where a provider reports none
+  - Observable: the helpers map OpenAI/Anthropic/Ollama finish reasons correctly and produce prompt/completion/total token counts for each provider
+  - _Requirements: 4.1_
+  - _Boundary: Mapping Helpers_
+  - _Depends: 1.1_
+
+- [ ] 2. Provider adapters and selection
+- [ ] 2.1 (P) Implement the OpenAI adapter
+  - Translate the agnostic request into an OpenAI chat completion call using the tenant key (SDK, `maxRetries: 0`, per-call timeout) and normalize the response (message, finish reason, usage) into the unified schema, throwing a credential-free `ProviderError` on upstream error/timeout
+  - Observable: a stubbed OpenAI response normalizes to the unified schema with resolved model and token usage, and a simulated upstream error surfaces as a `ProviderError` carrying no credential
+  - _Requirements: 3.1, 3.4, 3.5, 4.1, 4.2_
+  - _Boundary: OpenAI Adapter_
+  - _Depends: 1.1, 1.2, 1.4_
+- [ ] 2.2 (P) Implement the Anthropic adapter
+  - Translate the agnostic request into an Anthropic Messages call: lift `system` messages into the top-level system parameter, supply the default max tokens when omitted, set the api-key and version headers; normalize the response by concatenating content text blocks, mapping the stop reason, and summing input/output tokens
+  - Observable: a stubbed Anthropic response normalizes to the unified schema, system messages are sent as the system parameter, and total tokens equal input plus output
+  - _Requirements: 3.1, 3.4, 3.5, 4.1, 4.2_
+  - _Boundary: Anthropic Adapter_
+  - _Depends: 1.1, 1.2, 1.4_
+- [ ] 2.3 (P) Implement the Ollama adapter
+  - Translate the agnostic request into an Ollama `/api/chat` call with `stream:false` via HTTP with an abort timeout, and normalize the response (message content, done reason, summed prompt-eval and eval token counts) into the unified schema
+  - Observable: a stubbed Ollama response normalizes to the unified schema with a single complete message and summed token counts
+  - _Requirements: 3.1, 3.4, 3.5, 4.1, 4.2_
+  - _Boundary: Ollama Adapter_
+  - _Depends: 1.1, 1.2, 1.4_
+- [ ] 2.4 Implement the provider registry
+  - Register exactly the three adapters and resolve a provider name to its adapter, rejecting any unknown or unsupported provider
+  - Observable: each of the three supported providers resolves to its adapter, an unsupported provider raises an unsupported-provider error, and no fourth provider is registrable
+  - _Requirements: 2.1, 2.2, 2.3_
+  - _Boundary: Provider Registry_
+  - _Depends: 2.1, 2.2, 2.3_
+
+- [ ] 3. Conversation context and orchestration
+- [ ] 3.1 (P) Extend and populate the shared request context
+  - Extend the shared request context with the conversation message list and the derived latest user message and last assistant message (with defined defaults), and populate provider, resolved model, request params, and the conversation context without interpreting it
+  - Observable: after population the context exposes the message list plus the derived latest-user and last-assistant messages, unset downstream fields keep their defaults, and no caching or topic-shift logic runs here
+  - _Requirements: 5.1, 5.2, 5.3, 5.4_
+  - _Boundary: Context Extension_
+  - _Depends: 1.1_
+- [ ] 3.2 Implement the completion orchestration service
+  - Orchestrate a completion: resolve the tenant credential (per-request key or stored) via the auth resolver, select the adapter, populate the pre-call context, invoke the adapter, then record token usage and latency; map a missing credential to a missing-credential error without calling the provider
+  - Observable: a completion resolves the BYOK key, invokes exactly one adapter, returns the normalized response with the resolved model, and records token usage and latency in the context; a missing credential yields an error and no provider call
+  - _Requirements: 2.1, 2.4, 3.2, 3.3, 5.1_
+  - _Boundary: CompletionService_
+  - _Depends: 2.4, 3.1_
+
+- [ ] 4. Integration: endpoint and plugin wiring
+- [ ] 4.1 Implement the completions endpoint under authentication
+  - Add the `POST /v1/chat/completions` handler behind the auth middleware: validate the payload, pass any per-request provider key to the service, delegate to the completion service, and map provider errors/timeouts to a normalized error response that carries no credential
+  - Observable: an authenticated valid request returns the normalized response, an invalid payload returns a client error with no provider call, a provider failure returns a normalized error without the credential, and an unauthenticated request is rejected
+  - _Requirements: 1.1, 1.3, 4.3_
+  - _Boundary: Completions Route_
+  - _Depends: 1.3, 3.2_
+- [ ] 4.2 Register the gateway plugin and expose downstream seams
+  - Register the gateway module onto the foundation app after the auth plugin, expose the completion service and adapter interface for downstream specs, and document the gateway environment variables
+  - Observable: the app boots with the completion endpoint registered behind authentication and the completion service exposed for downstream wrapping, while the foundation health endpoints remain unaffected
+  - _Requirements: 1.1_
+  - _Depends: 4.1_
+
+- [ ] 5. Validation: routing integration tests
+- [ ] 5.1 Add integration tests for the completion flow
+  - Exercise end-to-end flows against stubbed provider endpoints (and the Compose Ollama service): an authenticated request selects the provider, uses the BYOK key, and returns a normalized response with the resolved model and token usage; each of the three providers routes to its adapter; an unsupported provider and a missing credential are rejected without a provider call; and no provider-specific field leaks into the normalized response
+  - Observable: the integration suite passes, proving provider selection, BYOK invocation, normalized responses across providers, missing-credential and unsupported-provider rejection, and absence of provider-specific leakage
+  - _Requirements: 1.1, 2.1, 2.2, 2.3, 2.4, 3.2, 3.3, 4.4_
+  - _Depends: 4.2_
