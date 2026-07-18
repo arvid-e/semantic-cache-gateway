@@ -6,7 +6,7 @@
 > `.kiro/steering/implementation-guide.md` for the build order and shared-contract seams.
 
 - [ ] 1. Foundation: project scaffold and tooling
-- [ ] 1.1 Initialize TypeScript service scaffold with strict typing and dev tooling
+- [x] 1.1 Initialize TypeScript service scaffold with strict typing and dev tooling
   - Create the Node.js 24 project with strict TypeScript (ESM, `@/` → `src/` path alias) and ESLint + Prettier configuration
   - Add `package.json` scripts for build, dev (watch), start, lint, format, and test
   - Observable: `npm run build` type-checks under strict mode and exits non-zero on a type error; `npm run lint` and `npm run format` report violations and exit non-zero when rules are broken
