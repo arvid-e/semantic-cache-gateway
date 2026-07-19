@@ -74,6 +74,6 @@
 - [ ] 4.1 Add integration tests against dockerized Postgres, Prometheus, and Grafana
   - Exercise: a completed request persists one metadata-only telemetry row with no secrets; the metrics endpoint exposes the required series and Prometheus scrapes them; Grafana provisions the datasource and both dashboards on startup; and with the telemetry database unavailable, requests still succeed and responses are unaffected
   - Observable: the integration suite passes, proving metadata-only persistence, metrics scraping, dashboard provisioning, and non-blocking failure isolation
-  - _File: test/integration/telemetry.test.ts_
+  - _File: src/modules/telemetry/telemetry.integration.test.ts_
   - _Requirements: 1.1, 3.1, 3.2, 3.3, 4.3, 5.3, 6.1_
   - _Depends: 3.1, 3.2_

@@ -62,6 +62,6 @@
 - [ ] 4.1 Add integration tests against dockerized Redis with stubbed providers
   - Exercise: a failing primary with a healthy secondary (and a secondary credential) returns the secondary response and records failover; a failing primary with no secondary credential surfaces the primary error without failover; repeated primary failures open the breaker so subsequent requests skip the primary and fail over; after cooldown a single half-open probe recovers and closes the breaker; and one tenant's failures do not open another tenant's breaker
   - Observable: the integration suite passes, proving secondary failover, the no-secondary error path, breaker opening and open-state failover, half-open recovery, and per-tenant isolation
-  - _File: test/integration/resilience.test.ts_
+  - _File: src/modules/resilience/resilience.integration.test.ts_
   - _Requirements: 1.1, 1.3, 1.4, 2.2, 2.3, 2.4, 3.1, 3.3, 4.1, 4.2_
   - _Depends: 3.3_

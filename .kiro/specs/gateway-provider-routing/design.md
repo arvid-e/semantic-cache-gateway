@@ -266,7 +266,7 @@ Key decisions: Anthropic's `system` messages are lifted to the top-level `system
 
 ##### Service Interface
 ```typescript
-import type { ProviderName, ProviderSecret } from '@/modules/auth/types';
+import type { ProviderName, ProviderSecret } from '#src/modules/auth/types.js';
 
 type ChatRole = 'system' | 'user' | 'assistant';
 interface ChatMessage { role: ChatRole; content: string; }
@@ -415,7 +415,7 @@ interface CompletionService {
 ##### State Management
 ```typescript
 // Declaration merging on the foundation RequestContext (no foundation edit)
-declare module '@/platform/context/types' {
+declare module '#src/platform/context/types.js' {
   interface RequestContext {
     messages: ChatMessage[];                    // default []
     latestUserMessage: ChatMessage | null;      // default null
@@ -444,6 +444,11 @@ Validate early; normalize provider failures; never leak the credential.
 Structured logs via the shared logger with redaction; the revealed secret is never logged. Metrics are out of boundary (`telemetry-analytics`).
 
 ## Testing Strategy
+
+Tests are co-located with the file under test (see `structure.md`): unit tests as `<name>.test.ts`
+beside `<name>.ts`, integration tests as `<name>.integration.test.ts` beside the module they
+exercise. There is no separate `test/` tree; the two Vitest suites are selected by filename suffix,
+not by directory.
 
 ### Unit Tests
 - Schema validation: a valid payload passes; a missing `messages`, an unknown `provider`, or a bad param is rejected with a 400 and no provider call (1.2, 1.3, 2.2).

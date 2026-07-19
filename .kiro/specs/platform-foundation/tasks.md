@@ -5,17 +5,18 @@
 > interfaces, make the task's observable bullet true, then run the checks. See
 > `.kiro/steering/implementation-guide.md` for the build order and shared-contract seams.
 
-- [ ] 1. Foundation: project scaffold and tooling
-- [ ] 1.1 Initialize TypeScript service scaffold with strict typing and dev tooling
-  - Create the Node.js 24 project with strict TypeScript (ESM, `@/` → `src/` path alias) and ESLint + Prettier configuration
+- [x] 1. Foundation: project scaffold and tooling
+- [x] 1.1 Initialize TypeScript service scaffold with strict typing and dev tooling
+  - Create the Node.js 24 project with strict TypeScript (ESM, `#src/` → `src/` subpath import via package.json `"imports"`) and ESLint + Prettier configuration
   - Add `package.json` scripts for build, dev (watch), start, lint, format, and test
   - Observable: `npm run build` type-checks under strict mode and exits non-zero on a type error; `npm run lint` and `npm run format` report violations and exit non-zero when rules are broken
   - _File: package.json, tsconfig.json, eslint.config.js, .prettierrc_
   - _Requirements: 9.1, 9.2, 9.3_
-- [ ] 1.2 Configure the Vitest test harness with separate unit and integration suites
-  - Wire Vitest with distinct `test` (unit) and `test:integration` commands; integration suite reads datastore connection settings from the environment
-  - Observable: `npm test` runs the unit suite and `npm run test:integration` runs the integration suite; a placeholder test in each suite passes
-  - _File: vitest.config.ts, test/unit/, test/integration/_
+- [x] 1.2 Configure the Vitest test harness with co-located unit and integration suites
+  - Wire Vitest with distinct `test` (unit) and `test:integration` commands that select suites by filename suffix, not directory: unit matches co-located `**/*.test.ts` (excluding integration), integration matches co-located `**/*.integration.test.ts`; the integration suite reads datastore connection settings from the environment
+  - Tests live beside the file under test — no `test/` tree; add placeholder tests in place (e.g. `src/**/placeholder.test.ts` and `src/**/placeholder.integration.test.ts`)
+  - Observable: `npm test` runs only the unit suite and `npm run test:integration` runs only the integration suite; a co-located placeholder test in each suite passes and neither command picks up the other's files
+  - _File: vitest.config.ts_
   - _Requirements: 9.1, 9.4_
 
 - [ ] 2. Foundation: configuration and logging
@@ -24,7 +25,7 @@
   - Fail startup on missing/invalid values with an error naming the offending setting; for settings marked sensitive, report the error without printing the value
   - Add a unit test covering a missing required variable (named), an invalid sensitive value (value not printed), default application, and the object being read-only
   - Observable: constructing config from an invalid environment throws an error naming the setting (and omitting any secret value); a valid environment yields a frozen typed object; the unit test passes
-  - _File: src/platform/config/schema.ts, src/platform/config/load-config.ts, test/unit/config.test.ts_
+  - _File: src/platform/config/schema.ts, src/platform/config/load-config.ts, src/platform/config/config.test.ts_
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 3.3, 8.4, 9.5_
 - [ ] 2.2 Implement shared logger configuration with secret redaction
   - Produce Pino logger options driven by config: honor the configured log level and redact sensitive fields (provider credentials, gateway API keys, encryption material, authorization headers) before records are written
@@ -109,6 +110,6 @@
 - [ ] 6.1 Add integration tests proving the foundation against dockerized dependencies
   - Boot the application against dockerized Postgres and Redis and assert: readiness returns success when both are up; readiness returns a failure naming the dependency (no secrets) when one is unreachable; liveness succeeds independent of datastore state; and the `vector` extension is present after migrations
   - Observable: the integration suite passes against the dockerized dependencies, exercising readiness success/failure, liveness, and pgvector availability
-  - _File: test/integration/readiness.test.ts_
+  - _File: src/platform/health/readiness.integration.test.ts_
   - _Requirements: 6.1, 6.2, 6.3, 8.3, 4.3, 5.3, 9.4, 9.5_
   - _Depends: 4.3, 5.2_

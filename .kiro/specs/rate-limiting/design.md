@@ -301,6 +301,11 @@ Structured logs for throttle decisions (tenant id, allowed/blocked) without secr
 
 ## Testing Strategy
 
+Tests are co-located with the file under test (see `structure.md`): unit tests as `<name>.test.ts`
+beside `<name>.ts`, integration tests as `<name>.integration.test.ts` beside the module they
+exercise. There is no separate `test/` tree; the two Vitest suites are selected by filename suffix,
+not by directory.
+
 ### Unit Tests
 - Limit resolver: returns the override when configured, the default otherwise (2.3, 2.4).
 - Header builder: sets `RateLimit-Limit`/`Remaining`/`Reset` on admit and adds `Retry-After` on reject (3.2, 3.3).
