@@ -19,15 +19,15 @@
   - _File: vitest.config.ts_
   - _Requirements: 9.1, 9.4_
 
-- [ ] 2. Foundation: configuration and logging
-- [ ] 2.1 Implement the typed configuration loader with validation and secret-safe errors
+- [x] 2. Foundation: configuration and logging
+- [x] 2.1 Implement the typed configuration loader with validation and secret-safe errors
   - Read all required settings (HTTP port, PostgreSQL, Redis, Ollama endpoint, log level) from the environment; apply documented defaults for optional settings; expose a single frozen, typed, read-only config object
   - Fail startup on missing/invalid values with an error naming the offending setting; for settings marked sensitive, report the error without printing the value
   - Add a unit test covering a missing required variable (named), an invalid sensitive value (value not printed), default application, and the object being read-only
   - Observable: constructing config from an invalid environment throws an error naming the setting (and omitting any secret value); a valid environment yields a frozen typed object; the unit test passes
   - _File: src/platform/config/schema.ts, src/platform/config/load-config.ts, src/platform/config/config.test.ts_
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 3.3, 8.4, 9.5_
-- [ ] 2.2 Implement shared logger configuration with secret redaction
+- [x] 2.2 Implement shared logger configuration with secret redaction
   - Produce Pino logger options driven by config: honor the configured log level and redact sensitive fields (provider credentials, gateway API keys, encryption material, authorization headers) before records are written
   - Add a unit test asserting a record containing a redact-path field is masked regardless of level
   - Observable: a log record carrying a sensitive field is emitted with that value masked; the unit test passes
