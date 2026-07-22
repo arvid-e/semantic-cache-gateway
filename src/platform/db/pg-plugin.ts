@@ -5,17 +5,6 @@ import type { ClientBase, PoolConfig } from 'pg';
 import type { FastifyInstance } from 'fastify';
 import type { Config } from '../config/schema.js';
 
-declare module 'fastify' {
-  interface FastifyInstance {
-    /**
-     * Shared pooled Postgres client with `pgvector` types registered. Created
-     * once at startup; domain modules query through this rather than opening
-     * their own connections (Req 4.4).
-     */
-    readonly pg: Pool;
-  }
-}
-
 /** Options accepted by {@link pgPlugin}. */
 export interface PgPluginOptions {
   readonly config: Config;
