@@ -44,7 +44,7 @@
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 1.3_
   - _Boundary: Postgres Plugin_
   - _Depends: 2.1_
-- [ ] 3.2 (P) Implement the shared Redis client plugin
+- [x] 3.2 (P) Implement the shared Redis client plugin
   - Establish a Redis client from config, verify connectivity at startup, expose it on the shared app instance, and quit the client on shutdown
   - Fail plugin startup with an error naming Redis when unreachable
   - Observable: on boot the app exposes a ready shared Redis client; an unreachable Redis aborts startup with a Redis-named error
