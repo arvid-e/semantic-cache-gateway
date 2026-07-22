@@ -36,7 +36,7 @@
   - _Depends: 2.1_
 
 - [ ] 3. Core platform plugins
-- [ ] 3.1 (P) Implement the shared PostgreSQL client plugin with pgvector support
+- [x] 3.1 (P) Implement the shared PostgreSQL client plugin with pgvector support
   - Establish a pooled Postgres client from config, register pgvector types on a startup connection, and assert the `vector` extension is available; expose the client on the shared app instance and close the pool on shutdown
   - Fail plugin startup with an error naming PostgreSQL when unreachable, or naming the missing extension when `vector` is absent
   - Observable: on boot the app exposes a ready shared Postgres client with vector types registered; an unreachable database or missing extension aborts startup with the corresponding named error
