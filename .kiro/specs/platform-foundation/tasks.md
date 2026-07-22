@@ -52,7 +52,7 @@
   - _Requirements: 4.1, 4.2, 4.4, 1.3_
   - _Boundary: Redis Plugin_
   - _Depends: 2.1_
-- [ ] 3.3 (P) Implement the migration runner and baseline migration
+- [x] 3.3 (P) Implement the migration runner and baseline migration
   - Provide a runner that applies pending migrations in deterministic order, records applied migrations, no-ops when up to date, and on failure stops, reports the failing migration, and does not record it
   - Author the baseline migration that enables the `pgvector` extension and creates the foundation baseline schema
   - Observable: running migrations against a fresh database enables the `vector` extension and records the baseline; re-running reports the schema as up to date and changes nothing
