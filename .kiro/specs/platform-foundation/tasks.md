@@ -69,7 +69,7 @@
   - _Boundary: Request Context_
 
 - [ ] 4. Integration: health endpoints and application assembly
-- [ ] 4.1 Implement liveness and readiness endpoints
+- [x] 4.1 Implement liveness and readiness endpoints
   - Serve a liveness endpoint returning success once the server accepts requests (no datastore checks) and a readiness endpoint that checks both Postgres and Redis, succeeding only when both are reachable
   - On a failed readiness check, respond with a failure status that names the unhealthy dependency without exposing connection secrets; keep both endpoints unauthenticated
   - Observable: liveness returns success independent of datastore state; readiness returns success when both datastores are up and a failure naming the down dependency (no secrets) when one is unreachable
