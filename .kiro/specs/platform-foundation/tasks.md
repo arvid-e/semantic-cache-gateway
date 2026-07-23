@@ -35,7 +35,7 @@
   - _Requirements: 3.1, 3.2, 3.3_
   - _Depends: 2.1_
 
-- [ ] 3. Core platform plugins
+- [x] 3. Core platform plugins
 - [x] 3.1 (P) Implement the shared PostgreSQL client plugin with pgvector support
   - Establish a pooled Postgres client from config, register pgvector types on a startup connection, and assert the `vector` extension is available; expose the client on the shared app instance and close the pool on shutdown
   - Fail plugin startup with an error naming PostgreSQL when unreachable, or naming the missing extension when `vector` is absent
@@ -60,7 +60,7 @@
   - _Requirements: 5.1, 5.2, 5.3, 5.4_
   - _Boundary: Migration Runner_
   - _Depends: 2.1_
-- [ ] 3.4 (P) Implement the extensible shared request context
+- [x] 3.4 (P) Implement the extensible shared request context
   - Define the request-context shape with fields for tenant identity, provider, model, params, cache status, token usage, latency, and failover/breaker state, each with a defined default; attach a freshly-defaulted context to every request for its lifetime and make it accessible to handlers and middleware
   - Ensure the shape is extensible by later specs without changing foundation code, and add a unit test asserting a new request's context carries all defaults
   - Observable: every handled request exposes a context object whose unset fields hold defined defaults (never undefined); the unit test passes
