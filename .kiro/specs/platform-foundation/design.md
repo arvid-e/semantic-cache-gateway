@@ -113,7 +113,7 @@ graph TB
 | Logging | Pino (bundled with Fastify) | Structured, leveled logs with `redact` paths | Level + redaction from config |
 | Data / Postgres | `pg` (^8), `pgvector` (^0.3) | Shared pooled Postgres client; vector type registration + extension check | `registerTypes` on startup connection |
 | Data / Redis | `ioredis` (^5) | Shared Redis client | Chosen for Lua/atomic ops needed by downstream specs |
-| Migrations | `node-pg-migrate` (^7) | Deterministic, recorded migrations; baseline enables `pgvector` | Tracking table `pgmigrations` |
+| Migrations | `node-pg-migrate` (^9) | Deterministic, recorded migrations; baseline enables `pgvector` | Tracking table `pgmigrations` |
 | Lifecycle | `close-with-grace` | Graceful shutdown on SIGTERM/SIGINT | Closes pool + redis before exit |
 | Testing | Vitest (^3) | Unit + integration suites; `app.inject` for routes | Integration targets dockerized PG + Redis |
 | Tooling | ESLint (^9 flat config), Prettier (^3), `tsx` | Lint/format, strict build, dev watch | `tsc` for type-checked build |
@@ -418,7 +418,8 @@ interface FastifyInstance {
 **Contracts**: Batch [x]
 
 ##### Batch / Job Contract
-- Trigger: `npm run migrate up` and the container entrypoint before the server binds.
+- Trigger: `npm run migrate` and the container entrypoint before the server binds.
+  Direction is fixed to `up`; there is no unattended `down` path.
 - Input / validation: migration files under `migrations/`; Postgres connection from config.
 - Output / destination: applied schema + `pgmigrations` tracking rows.
 - Idempotency & recovery: re-running applies only pending migrations (5.2); a failed migration is not recorded, so re-run resumes at the failing step (5.4).
