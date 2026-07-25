@@ -1,0 +1,107 @@
+# Local development stack (platform-foundation, task 5.2).
+#
+# `docker compose up` brings up the gateway together with the three backing
+# services it needs — PostgreSQL (with pgvector), Redis, and Ollama (Req 8.1) —
+# and gates the gateway on all three reporting healthy before it starts
+# (Req 8.2). Every setting the gateway needs is supplied here (Req 8.4), so the
+# readiness endpoint answers healthy with no manual steps (Req 8.3).
+#
+# Credentials are local-dev defaults, inlined so the stack works out of the box;
+# each is overridable from the shell or an `.env` file via ${VAR:-default}
+# without editing this file. They are not production secrets.
+#
+# Req 4.5: the gateway relies on exactly two *datastores* — Postgres and Redis.
+# Ollama is a local embeddings/inference service, not a store, and readiness
+# checks only Postgres + Redis.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-gateway}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gateway}
+      POSTGRES_DB: ${POSTGRES_DB:-gateway}
+    ports:
+      # Exposed so host-run integration tests (task 6.1) can reach it.
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      # `service_healthy` for the gateway hangs on this returning success.
+      test:
+        ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-gateway} -d ${POSTGRES_DB:-gateway}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:7
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  ollama:
+    image: ollama/ollama
+    ports:
+      - '${OLLAMA_PORT:-11434}:11434'
+    volumes:
+      - ollama-data:/root/.ollama
+    healthcheck:
+      # `ollama` ships in the image and talks to the local server; a zero exit
+      # means the server is answering. The image has no curl.
+      test: ['CMD', 'ollama', 'list']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  gateway:
+    build:
+      context: .
+    depends_on:
+      # Startup is gated on every backing service being healthy (Req 8.2).
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    environment:
+      # Everything the config loader (src/platform/config/schema.ts) requires,
+      # with in-container hostnames on the Compose network (Req 8.4).
+      HTTP_PORT: ${HTTP_PORT:-3000}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      NODE_ENV: ${NODE_ENV:-development}
+      POSTGRES_URL: postgres://${POSTGRES_USER:-gateway}:${POSTGRES_PASSWORD:-gateway}@postgres:5432/${POSTGRES_DB:-gateway}
+      POSTGRES_POOL_MAX: ${POSTGRES_POOL_MAX:-10}
+      REDIS_URL: redis://redis:6379
+      OLLAMA_URL: http://ollama:11434
+    ports:
+      - '${HTTP_PORT:-3000}:${HTTP_PORT:-3000}'
+    healthcheck:
+      # node:slim has no curl, so probe readiness with node's global fetch
+      # against the container's own configured port (Req 8.3).
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:'+(process.env.HTTP_PORT||3000)+'/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+volumes:
+  postgres-data:
+  redis-data:
+  ollama-data:

@@ -33,7 +33,13 @@ export default defineConfig(
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
-        projectService: true,
+        // Root-level config files (e.g. vitest.config.ts) aren't part of
+        // tsconfig.json's `src/**/*` include, so the project service has no
+        // program for them. Allow them onto the default inferred project so
+        // typed linting covers them instead of erroring.
+        projectService: {
+          allowDefaultProject: ['*.config.ts'],
+        },
         tsconfigRootDir: new URL('.', import.meta.url).pathname,
       },
     },
