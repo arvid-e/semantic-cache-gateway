@@ -1,5 +1,6 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import type { ApiKeyService } from '../services/api-key-service.js';
+import type { CredentialService } from '../services/credential-service.js';
 import type { TenantService } from '../services/tenant-service.js';
 import type { Tenant } from '../types.js';
 import { createAdminRoutes } from './admin-routes.js';
@@ -36,6 +37,8 @@ function fakeDeps() {
   const revoke = vi.fn((_tenantId: string, keyId: string) =>
     Promise.resolve(keyId === KEY_ID),
   );
+  const attachOrRotate = vi.fn(() => Promise.resolve());
+  const remove = vi.fn(() => Promise.resolve());
 
   const tenantService: TenantService = { createTenant, getTenant };
   const apiKeyService: ApiKeyService = {
@@ -43,13 +46,21 @@ function fakeDeps() {
     authenticate: vi.fn(),
     revoke,
   };
+  const credentialService: CredentialService = {
+    attachOrRotate,
+    remove,
+    getDecrypted: vi.fn(),
+  };
   return {
     tenantService,
     apiKeyService,
+    credentialService,
     createTenant,
     getTenant,
     issueKey,
     revoke,
+    attachOrRotate,
+    remove,
   };
 }
 
@@ -61,6 +72,7 @@ async function buildApp(
     createAdminRoutes({
       tenantService: deps.tenantService,
       apiKeyService: deps.apiKeyService,
+      credentialService: deps.credentialService,
       adminToken: ADMIN_TOKEN,
     }),
   );
@@ -186,6 +198,116 @@ describe('admin routes', () => {
     });
     expect(res.statusCode).toBe(401);
     expect(revoke).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  const PROVIDER_KEY = 'sk-provider-plaintext-secret';
+
+  it('attaches a provider credential and returns no secret material', async () => {
+    const { app, attachOrRotate } = await buildApp();
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/admin/tenants/${TENANT_ID}/credentials/openai`,
+      headers: auth,
+      payload: { apiKey: PROVIDER_KEY },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json<{ provider: string; updatedAt: string }>();
+    expect(body.provider).toBe('openai');
+    expect(typeof body.updatedAt).toBe('string');
+    // The stored secret is never echoed back (Req 5.5).
+    expect(res.body).not.toContain(PROVIDER_KEY);
+    expect(attachOrRotate).toHaveBeenCalledWith(
+      TENANT_ID,
+      'openai',
+      PROVIDER_KEY,
+    );
+    await app.close();
+  });
+
+  it('rejects an unauthorized credential attach without a change', async () => {
+    const { app, attachOrRotate } = await buildApp();
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/admin/tenants/${TENANT_ID}/credentials/openai`,
+      payload: { apiKey: PROVIDER_KEY },
+    });
+    expect(res.statusCode).toBe(401);
+    expect(attachOrRotate).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('returns 404 attaching a credential for an unknown tenant', async () => {
+    const { app, attachOrRotate } = await buildApp();
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/admin/tenants/99999999-9999-9999-9999-999999999999/credentials/openai`,
+      headers: auth,
+      payload: { apiKey: PROVIDER_KEY },
+    });
+    expect(res.statusCode).toBe(404);
+    expect(attachOrRotate).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('returns 422 for an unknown provider', async () => {
+    const { app, attachOrRotate } = await buildApp();
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/admin/tenants/${TENANT_ID}/credentials/cohere`,
+      headers: auth,
+      payload: { apiKey: PROVIDER_KEY },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(attachOrRotate).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('rejects a credential attach with a missing apiKey (400)', async () => {
+    const { app } = await buildApp();
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/admin/tenants/${TENANT_ID}/credentials/openai`,
+      headers: auth,
+      payload: {},
+    });
+    expect(res.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it('removes a provider credential (204)', async () => {
+    const { app, remove } = await buildApp();
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/admin/tenants/${TENANT_ID}/credentials/anthropic`,
+      headers: auth,
+    });
+    expect(res.statusCode).toBe(204);
+    expect(remove).toHaveBeenCalledWith(TENANT_ID, 'anthropic');
+    await app.close();
+  });
+
+  it('returns 404 removing a credential for an unknown tenant', async () => {
+    const { app, remove } = await buildApp();
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/admin/tenants/99999999-9999-9999-9999-999999999999/credentials/openai`,
+      headers: auth,
+    });
+    expect(res.statusCode).toBe(404);
+    expect(remove).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('rejects an unauthorized credential removal without a change', async () => {
+    const { app, remove } = await buildApp();
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/admin/tenants/${TENANT_ID}/credentials/openai`,
+    });
+    expect(res.statusCode).toBe(401);
+    expect(remove).not.toHaveBeenCalled();
     await app.close();
   });
 });

@@ -94,7 +94,7 @@
   - _Requirements: 5.1, 5.2, 5.4, 6.4_
   - _Boundary: Admin Guard, Admin Routes_
   - _Depends: 4.1, 4.2, 1.2_
-- [ ] 5.3 Implement provider-credential provisioning routes
+- [x] 5.3 Implement provider-credential provisioning routes
   - Add the admin routes to attach, rotate, and remove a tenant's provider credential, never returning stored secret material in any response
   - Observable: attach/rotate/remove update the tenant's encrypted credential store, and no response returns a stored provider credential or previously issued key
   - _File: src/modules/auth/routes/admin-routes.ts_

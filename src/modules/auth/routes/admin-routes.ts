@@ -1,24 +1,28 @@
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { createAdminGuard } from '../middleware/admin-guard.js';
 import type { ApiKeyService } from '../services/api-key-service.js';
+import type { CredentialService } from '../services/credential-service.js';
 import type { TenantService } from '../services/tenant-service.js';
+import { isProviderName } from '../types.js';
 
 /**
- * Admin / provisioning API (Req 5.1, 5.2, 5.4, 6.4).
+ * Admin / provisioning API (Req 5.1, 5.2, 5.3, 5.4, 5.5, 6.4).
  *
- * A minimal, admin-authorized surface for operators to create tenants and issue
- * or revoke gateway keys. Every route in this plugin is guarded by the admin
- * token, and the plugin is *encapsulated* (not `fastify-plugin`), so the guard
- * hook applies only to these routes — the foundation's health endpoints and the
- * gateway's own routes are unaffected.
+ * A minimal, admin-authorized surface for operators to create tenants, issue or
+ * revoke gateway keys, and attach/rotate/remove provider credentials. Every
+ * route in this plugin is guarded by the admin token, and the plugin is
+ * *encapsulated* (not `fastify-plugin`), so the guard hook applies only to these
+ * routes — the foundation's health endpoints and the gateway's own routes are
+ * unaffected.
  *
  * The issue-key response is the single place a plaintext gateway key ever
- * appears, exactly once at issuance (Req 5.2, 6.4); no route returns stored
- * secret material.
+ * appears, exactly once at issuance (Req 5.2, 6.4); no route returns a stored
+ * provider credential or previously issued key (Req 5.5).
  */
 export interface AdminRoutesDeps {
   readonly tenantService: TenantService;
   readonly apiKeyService: ApiKeyService;
+  readonly credentialService: CredentialService;
   /** `AuthConfig.adminToken` for the authorization guard. */
   readonly adminToken: string;
 }
@@ -42,6 +46,19 @@ const keyParams = {
   properties: {
     tenantId: { type: 'string', pattern: UUID_PATTERN },
     keyId: { type: 'string', pattern: UUID_PATTERN },
+  },
+} as const;
+
+// `provider` is validated in the handler (via `isProviderName`) rather than by a
+// schema enum, so an unknown provider becomes a 422/404 (per contract) instead
+// of a generic 400.
+const credentialParams = {
+  type: 'object',
+  required: ['tenantId', 'provider'],
+  additionalProperties: false,
+  properties: {
+    tenantId: { type: 'string', pattern: UUID_PATTERN },
+    provider: { type: 'string', minLength: 1 },
   },
 } as const;
 
@@ -100,6 +117,61 @@ export function createAdminRoutes(deps: AdminRoutesDeps): FastifyPluginAsync {
         const { tenantId, keyId } = request.params;
         const revoked = await deps.apiKeyService.revoke(tenantId, keyId);
         if (!revoked) return reply.code(404).send({ error: 'Key not found' });
+        return reply.code(204).send();
+      },
+    );
+
+    // Attach or rotate a provider credential (Req 5.3). The response carries no
+    // secret material — only the provider and when it took effect (Req 5.5).
+    app.put<{
+      Params: { tenantId: string; provider: string };
+      Body: { apiKey: string };
+    }>(
+      '/admin/tenants/:tenantId/credentials/:provider',
+      {
+        schema: {
+          params: credentialParams,
+          body: {
+            type: 'object',
+            required: ['apiKey'],
+            additionalProperties: false,
+            properties: { apiKey: { type: 'string', minLength: 1 } },
+          },
+        },
+      },
+      async (request, reply) => {
+        const { tenantId, provider } = request.params;
+        if (!isProviderName(provider)) {
+          return reply.code(422).send({ error: 'Unknown provider' });
+        }
+        if ((await deps.tenantService.getTenant(tenantId)) === null) {
+          return reply.code(404).send({ error: 'Tenant not found' });
+        }
+        await deps.credentialService.attachOrRotate(
+          tenantId,
+          provider,
+          request.body.apiKey,
+        );
+        return reply
+          .code(200)
+          .send({ provider, updatedAt: new Date().toISOString() });
+      },
+    );
+
+    // Remove a provider credential (Req 5.3). Idempotent: a missing credential
+    // under an existing tenant still succeeds with 204.
+    app.delete<{ Params: { tenantId: string; provider: string } }>(
+      '/admin/tenants/:tenantId/credentials/:provider',
+      { schema: { params: credentialParams } },
+      async (request, reply) => {
+        const { tenantId, provider } = request.params;
+        if (!isProviderName(provider)) {
+          return reply.code(404).send({ error: 'Credential not found' });
+        }
+        if ((await deps.tenantService.getTenant(tenantId)) === null) {
+          return reply.code(404).send({ error: 'Tenant not found' });
+        }
+        await deps.credentialService.remove(tenantId, provider);
         return reply.code(204).send();
       },
     );
