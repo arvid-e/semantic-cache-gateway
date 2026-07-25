@@ -77,7 +77,7 @@
   - _Requirements: 6.1, 6.2, 6.3, 6.4_
   - _Boundary: Health Plugin_
   - _Depends: 3.1, 3.2_
-- [ ] 4.2 Assemble the application host with shared plugins and request logging
+- [x] 4.2 Assemble the application host with shared plugins and request logging
   - Build the Fastify application from config with the shared logger, registering the configuration, Postgres, Redis, request-context, and health plugins so that only the two datastores' clients are wired and domain modules can later register their own routes/middleware without editing the bootstrap
   - Emit structured request start/completion logs with method, route, status code, and latency
   - Observable: the assembled app boots with all foundation plugins registered, logs each request's lifecycle with the correlating metadata, and accepts registration of an additional plugin without bootstrap changes
