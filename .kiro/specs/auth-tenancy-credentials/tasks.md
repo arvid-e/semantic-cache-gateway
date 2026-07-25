@@ -5,19 +5,19 @@
 > then run the checks. This spec defines the canonical `ProviderName`, `CredentialResolver`, and
 > `ProviderSecret` consumed downstream — see `.kiro/steering/implementation-guide.md`.
 
-- [ ] 1. Foundation: schema, config, and shared contracts
-- [ ] 1.1 Author the auth database migration
+- [x] 1. Foundation: schema, config, and shared contracts
+- [x] 1.1 Author the auth database migration
   - Add this spec's migration creating `tenants`, `gateway_api_keys` (unique `key_hash`, non-secret `key_prefix`, nullable `revoked_at`), and `provider_credentials` (encrypted `ciphertext`, `key_version`, unique `(tenant_id, provider)`, provider check constraint), with tenant foreign keys and indexes
   - Observable: running migrations creates the three tables with the tenant foreign keys, the unique `key_hash` and `(tenant_id, provider)` constraints, and no plaintext secret column in any table
   - _File: migrations/{timestamp}_auth_tenancy.sql_
   - _Requirements: 1.1, 1.3, 2.4, 3.2, 3.3_
-- [ ] 1.2 (P) Implement the auth config segment
+- [x] 1.2 (P) Implement the auth config segment
   - Validate the auth environment segment (encryption keyring with an active version, gateway-key pepper, admin token) with fail-fast, secret-safe semantics consistent with the foundation loader
   - Observable: an invalid or missing auth setting fails plugin configuration with an error naming the setting and never printing its value; a valid environment yields a typed read-only auth config
   - _File: src/modules/auth/config.ts_
   - _Requirements: 5.4, 6.1, 6.2_
   - _Boundary: Auth Config_
-- [ ] 1.3 (P) Define shared auth types and the redacting secret wrapper
+- [x] 1.3 (P) Define shared auth types and the redacting secret wrapper
   - Define `ProviderName`, the tenant/key/credential entity types, `CredentialResolution`, the credential error types, and the `ProviderSecret` wrapper that reveals its value only via an explicit call
   - Observable: `ProviderSecret` serializes as `[REDACTED]` from `toJSON`/`toString` while `reveal()` returns the raw value; `ProviderName` and the resolver result types are exported for downstream specs
   - _File: src/modules/auth/types.ts_
