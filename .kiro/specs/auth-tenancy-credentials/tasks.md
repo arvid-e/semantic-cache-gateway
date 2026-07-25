@@ -71,7 +71,7 @@
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 5.3_
   - _Boundary: CredentialService_
   - _Depends: 2.2, 3.1_
-- [ ] 4.4 Implement the BYOK credential resolver
+- [x] 4.4 Implement the BYOK credential resolver
   - Resolve a provider credential from a per-request key (used without persisting) or, absent that, from decrypted storage; return a typed missing result when neither exists and a typed decryption-failure result on decrypt error; wrap resolved secrets in the redacting wrapper
   - Observable: a per-request key resolves without being persisted, a stored credential resolves decrypted, absence returns `missing`, a decrypt failure returns `decryption_failed`, and the resolved secret is a `ProviderSecret`
   - _File: src/modules/auth/services/credential-resolver.ts_
