@@ -108,8 +108,8 @@
   - _Requirements: 6.1, 6.3_
   - _Depends: 5.1, 5.2, 5.3_
 
-- [ ] 6. Validation: auth integration tests
-- [ ] 6.1 Add integration tests against dockerized PostgreSQL
+- [x] 6. Validation: auth integration tests
+- [x] 6.1 Add integration tests against dockerized PostgreSQL
   - Exercise the end-to-end flows: provision a tenant, issue a key, authenticate a request (tenant context set) and reject an unknown key; attach/resolve/rotate/remove a credential; verify cross-tenant access is denied, a tenant can hold two providers, and no admin response or persisted row exposes a plaintext secret
   - Observable: the integration suite passes, proving authentication, tenant isolation, credential encryption-at-rest and lifecycle, multi-provider storage, and secret non-exposure against the dockerized database
   - _File: src/modules/auth/auth.integration.test.ts_
