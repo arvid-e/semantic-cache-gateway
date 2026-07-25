@@ -25,7 +25,7 @@
   - _Boundary: Auth types, ProviderSecret_
 
 - [ ] 2. Cryptographic primitives
-- [ ] 2.1 (P) Implement gateway API-key hashing and generation
+- [x] 2.1 (P) Implement gateway API-key hashing and generation
   - Generate high-entropy `scg_`-prefixed keys, derive a non-secret prefix, compute the keyed hash from the configured pepper, and compare candidates in constant time
   - Observable: the same key and pepper always produce the same hash, a wrong key does not match, comparison is constant-time, and a generated key carries the expected prefix
   - _File: src/modules/auth/crypto/key-hash.ts_
