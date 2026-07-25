@@ -49,7 +49,7 @@
   - _Boundary: Auth Repositories_
   - _Depends: 1.1_
 
-- [ ] 4. Services and credential resolution
+- [x] 4. Services and credential resolution
 - [x] 4.1 (P) Implement the tenant service
   - Create tenants with a stable unique identifier
   - Observable: creating a tenant persists a row with a unique id returned to the caller
