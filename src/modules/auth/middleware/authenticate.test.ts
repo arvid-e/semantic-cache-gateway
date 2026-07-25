@@ -21,7 +21,10 @@ function fakeApiKeys(behaviour: (key: string) => AuthenticationResult): {
   authenticate: Mock<(key: string) => Promise<AuthenticationResult>>;
 } {
   const authenticate = vi.fn((key: string) => Promise.resolve(behaviour(key)));
-  return { service: { issueKey: vi.fn(), authenticate }, authenticate };
+  return {
+    service: { issueKey: vi.fn(), authenticate, revoke: vi.fn() },
+    authenticate,
+  };
 }
 
 /**

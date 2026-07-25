@@ -87,7 +87,7 @@
   - _Requirements: 1.2, 2.1, 2.2, 2.3, 6.3_
   - _Boundary: Auth Middleware_
   - _Depends: 4.2_
-- [ ] 5.2 Implement admin authorization and tenant/key provisioning routes
+- [x] 5.2 Implement admin authorization and tenant/key provisioning routes
   - Add the admin authorization guard (constant-time token check that rejects and makes no change on failure) and the routes to create a tenant and to issue and revoke a gateway key, returning the issued key plaintext only once
   - Observable: a request without valid admin authorization is rejected and makes no change; creating a tenant and issuing a key succeed; the issue-key response exposes the plaintext exactly once and stores only the hash
   - _File: src/modules/auth/middleware/admin-guard.ts, src/modules/auth/routes/admin-routes.ts_
