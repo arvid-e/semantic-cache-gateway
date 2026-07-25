@@ -1,10 +1,10 @@
 import { randomBytes } from 'node:crypto';
-import { createKeyHashUtil } from './key-hash.js';
+import { DefaultKeyHashUtil } from './key-hash.js';
 
 const PEPPER = randomBytes(32);
-const util = createKeyHashUtil(PEPPER);
+const util = new DefaultKeyHashUtil(PEPPER);
 
-describe('createKeyHashUtil', () => {
+describe('DefaultKeyHashUtil', () => {
   it('hashes the same key and pepper to an identical value', () => {
     const a = util.hash('scg_example-key');
     const b = util.hash('scg_example-key');
@@ -13,7 +13,7 @@ describe('createKeyHashUtil', () => {
   });
 
   it('produces a different hash under a different pepper', () => {
-    const other = createKeyHashUtil(randomBytes(32));
+    const other = new DefaultKeyHashUtil(randomBytes(32));
     expect(util.hash('scg_example-key')).not.toEqual(
       other.hash('scg_example-key'),
     );

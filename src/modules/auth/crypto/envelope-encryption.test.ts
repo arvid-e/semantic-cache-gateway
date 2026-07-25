@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import type { AuthConfig } from '../config.js';
 import { DecryptionError } from '../types.js';
-import { createEnvelopeEncryption } from './envelope-encryption.js';
+import { DefaultEnvelopeEncryption } from './envelope-encryption.js';
 
 const KEY_V1 = randomBytes(32);
 const KEY_V2 = randomBytes(32);
@@ -13,9 +13,9 @@ function singleKeyConfig(): AuthConfig['encryption'] {
 
 const SECRET = 'sk-provider-secret-value-123';
 
-describe('createEnvelopeEncryption', () => {
+describe('DefaultEnvelopeEncryption', () => {
   it('round-trips a secret through encrypt then decrypt', () => {
-    const env = createEnvelopeEncryption(singleKeyConfig());
+    const env = new DefaultEnvelopeEncryption(singleKeyConfig());
     const { ciphertext, keyVersion } = env.encrypt(SECRET);
 
     expect(keyVersion).toBe(1);
@@ -23,7 +23,7 @@ describe('createEnvelopeEncryption', () => {
   });
 
   it('round-trips unicode and empty plaintext', () => {
-    const env = createEnvelopeEncryption(singleKeyConfig());
+    const env = new DefaultEnvelopeEncryption(singleKeyConfig());
     for (const value of ['', '🔐 clé-secrète']) {
       const { ciphertext, keyVersion } = env.encrypt(value);
       expect(env.decrypt(ciphertext, keyVersion)).toBe(value);
@@ -31,14 +31,14 @@ describe('createEnvelopeEncryption', () => {
   });
 
   it('never stores the plaintext in the ciphertext envelope', () => {
-    const env = createEnvelopeEncryption(singleKeyConfig());
+    const env = new DefaultEnvelopeEncryption(singleKeyConfig());
     const { ciphertext } = env.encrypt(SECRET);
     expect(ciphertext.toString('utf8')).not.toContain(SECRET);
     expect(ciphertext.toString('latin1')).not.toContain(SECRET);
   });
 
   it('uses a fresh nonce so identical plaintext yields distinct ciphertext', () => {
-    const env = createEnvelopeEncryption(singleKeyConfig());
+    const env = new DefaultEnvelopeEncryption(singleKeyConfig());
     const a = env.encrypt(SECRET);
     const b = env.encrypt(SECRET);
     expect(a.ciphertext).not.toEqual(b.ciphertext);
@@ -48,7 +48,7 @@ describe('createEnvelopeEncryption', () => {
   });
 
   it('fails to decrypt a tampered ciphertext body', () => {
-    const env = createEnvelopeEncryption(singleKeyConfig());
+    const env = new DefaultEnvelopeEncryption(singleKeyConfig());
     const { ciphertext, keyVersion } = env.encrypt(SECRET);
     const tampered = Buffer.from(ciphertext);
     tampered[tampered.length - 1] ^= 0xff; // flip a byte of the sealed body
@@ -57,7 +57,7 @@ describe('createEnvelopeEncryption', () => {
   });
 
   it('fails to decrypt when the auth tag is altered', () => {
-    const env = createEnvelopeEncryption(singleKeyConfig());
+    const env = new DefaultEnvelopeEncryption(singleKeyConfig());
     const { ciphertext, keyVersion } = env.encrypt(SECRET);
     const tampered = Buffer.from(ciphertext);
     tampered[12] ^= 0xff; // first byte of the 16-byte auth tag
@@ -66,12 +66,12 @@ describe('createEnvelopeEncryption', () => {
   });
 
   it('rejects a ciphertext too short to hold a nonce and tag', () => {
-    const env = createEnvelopeEncryption(singleKeyConfig());
+    const env = new DefaultEnvelopeEncryption(singleKeyConfig());
     expect(() => env.decrypt(randomBytes(10), 1)).toThrow(DecryptionError);
   });
 
   it('raises a secret-free DecryptionError for an unknown key version', () => {
-    const env = createEnvelopeEncryption(singleKeyConfig());
+    const env = new DefaultEnvelopeEncryption(singleKeyConfig());
     const { ciphertext } = env.encrypt(SECRET);
 
     try {
@@ -96,14 +96,16 @@ describe('createEnvelopeEncryption', () => {
         [2, KEY_V2],
       ]),
     };
-    const env = createEnvelopeEncryption(rotated);
+    const env = new DefaultEnvelopeEncryption(rotated);
 
     const fresh = env.encrypt(SECRET);
     expect(fresh.keyVersion).toBe(2); // new writes use the active version
     expect(env.decrypt(fresh.ciphertext, fresh.keyVersion)).toBe(SECRET);
 
     // A secret sealed earlier under v1 still opens after rotation.
-    const legacy = createEnvelopeEncryption(singleKeyConfig()).encrypt(SECRET);
+    const legacy = new DefaultEnvelopeEncryption(singleKeyConfig()).encrypt(
+      SECRET,
+    );
     expect(env.decrypt(legacy.ciphertext, legacy.keyVersion)).toBe(SECRET);
   });
 
@@ -115,7 +117,7 @@ describe('createEnvelopeEncryption', () => {
         [2, KEY_V2],
       ]),
     };
-    const env = createEnvelopeEncryption(rotated);
+    const env = new DefaultEnvelopeEncryption(rotated);
     const { ciphertext } = env.encrypt(SECRET); // sealed under v1
 
     // Claiming version 2 selects the wrong key → auth tag fails.

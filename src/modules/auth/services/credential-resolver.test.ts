@@ -1,6 +1,6 @@
 import type { CredentialService } from './credential-service.js';
 import { DecryptionError, ProviderSecret } from '../types.js';
-import { createCredentialResolver } from './credential-resolver.js';
+import { DefaultCredentialResolver } from './credential-resolver.js';
 
 /** A credential service whose methods are spies, with sensible defaults. */
 function fakeCredentialService(): CredentialService & {
@@ -15,10 +15,10 @@ function fakeCredentialService(): CredentialService & {
   };
 }
 
-describe('createCredentialResolver', () => {
+describe('DefaultCredentialResolver', () => {
   it('resolves a per-request key without persisting or reading storage', async () => {
     const svc = fakeCredentialService();
-    const resolver = createCredentialResolver(svc);
+    const resolver = new DefaultCredentialResolver(svc);
 
     const result = await resolver.resolveCredential({
       tenantId: 't1',
@@ -40,7 +40,7 @@ describe('createCredentialResolver', () => {
   it('falls back to the decrypted stored credential', async () => {
     const svc = fakeCredentialService();
     svc.getDecrypted.mockResolvedValue(new ProviderSecret('sk-stored'));
-    const resolver = createCredentialResolver(svc);
+    const resolver = new DefaultCredentialResolver(svc);
 
     const result = await resolver.resolveCredential({
       tenantId: 't1',
@@ -57,7 +57,7 @@ describe('createCredentialResolver', () => {
   it('treats an empty per-request key as not supplied', async () => {
     const svc = fakeCredentialService();
     svc.getDecrypted.mockResolvedValue(new ProviderSecret('sk-stored'));
-    const resolver = createCredentialResolver(svc);
+    const resolver = new DefaultCredentialResolver(svc);
 
     const result = await resolver.resolveCredential({
       tenantId: 't1',
@@ -71,7 +71,7 @@ describe('createCredentialResolver', () => {
 
   it('returns missing when neither a per-request nor a stored key exists', async () => {
     const svc = fakeCredentialService(); // getDecrypted defaults to null
-    const resolver = createCredentialResolver(svc);
+    const resolver = new DefaultCredentialResolver(svc);
 
     const result = await resolver.resolveCredential({
       tenantId: 't1',
@@ -84,7 +84,7 @@ describe('createCredentialResolver', () => {
   it('returns decryption_failed when the stored credential cannot be decrypted', async () => {
     const svc = fakeCredentialService();
     svc.getDecrypted.mockRejectedValue(new DecryptionError(1));
-    const resolver = createCredentialResolver(svc);
+    const resolver = new DefaultCredentialResolver(svc);
 
     const result = await resolver.resolveCredential({
       tenantId: 't1',
@@ -97,7 +97,7 @@ describe('createCredentialResolver', () => {
   it('rethrows a non-decryption error (e.g. a datastore fault)', async () => {
     const svc = fakeCredentialService();
     svc.getDecrypted.mockRejectedValue(new Error('connection reset'));
-    const resolver = createCredentialResolver(svc);
+    const resolver = new DefaultCredentialResolver(svc);
 
     await expect(
       resolver.resolveCredential({ tenantId: 't1', provider: 'openai' }),

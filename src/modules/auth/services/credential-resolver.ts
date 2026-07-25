@@ -30,44 +30,41 @@ export interface CredentialResolver {
   ): Promise<CredentialResolution>;
 }
 
-/** Build a {@link CredentialResolver} over the credential service. */
-export function createCredentialResolver(
-  credentials: CredentialService,
-): CredentialResolver {
-  return {
-    async resolveCredential({
-      tenantId,
-      provider,
-      perRequestKey,
-    }: ResolveCredentialInput): Promise<CredentialResolution> {
-      // BYOK: a supplied per-request key is used as-is and never persisted
-      // (Req 4.1). An empty value is treated as "not supplied".
-      if (perRequestKey !== undefined && perRequestKey.length > 0) {
-        return {
-          kind: 'resolved',
-          secret: new ProviderSecret(perRequestKey),
-          source: 'per_request',
-        };
-      }
+/** {@link CredentialResolver} over the credential service. */
+export class DefaultCredentialResolver implements CredentialResolver {
+  constructor(private readonly credentials: CredentialService) {}
 
-      // Otherwise fall back to the tenant's stored, encrypted credential
-      // (Req 4.2), decrypted transiently by the service.
-      let secret: ProviderSecret | null;
-      try {
-        secret = await credentials.getDecrypted(tenantId, provider);
-      } catch (err) {
-        // A decrypt failure is a typed, secret-free outcome the caller maps to
-        // a safe error (Req 3.5, 4.4). Anything else is a real fault — rethrow.
-        if (err instanceof DecryptionError)
-          return { kind: 'decryption_failed' };
-        throw err;
-      }
+  async resolveCredential({
+    tenantId,
+    provider,
+    perRequestKey,
+  }: ResolveCredentialInput): Promise<CredentialResolution> {
+    // BYOK: a supplied per-request key is used as-is and never persisted
+    // (Req 4.1). An empty value is treated as "not supplied".
+    if (perRequestKey !== undefined && perRequestKey.length > 0) {
+      return {
+        kind: 'resolved',
+        secret: new ProviderSecret(perRequestKey),
+        source: 'per_request',
+      };
+    }
 
-      // Neither per-request nor stored: a typed miss the caller turns into a
-      // missing-credential error (Req 4.3).
-      if (secret === null) return { kind: 'missing' };
+    // Otherwise fall back to the tenant's stored, encrypted credential
+    // (Req 4.2), decrypted transiently by the service.
+    let secret: ProviderSecret | null;
+    try {
+      secret = await this.credentials.getDecrypted(tenantId, provider);
+    } catch (err) {
+      // A decrypt failure is a typed, secret-free outcome the caller maps to
+      // a safe error (Req 3.5, 4.4). Anything else is a real fault — rethrow.
+      if (err instanceof DecryptionError) return { kind: 'decryption_failed' };
+      throw err;
+    }
 
-      return { kind: 'resolved', secret, source: 'stored' };
-    },
-  };
+    // Neither per-request nor stored: a typed miss the caller turns into a
+    // missing-credential error (Req 4.3).
+    if (secret === null) return { kind: 'missing' };
+
+    return { kind: 'resolved', secret, source: 'stored' };
+  }
 }

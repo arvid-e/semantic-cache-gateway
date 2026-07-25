@@ -1,7 +1,7 @@
 import type { Pool } from 'pg';
 import type { ProviderCredential, ProviderName } from '../types.js';
 
-/** See {@link createCredentialRepository}; accepts a `Pool` or a `PoolClient`. */
+/** See {@link DefaultCredentialRepository}; accepts a `Pool` or `PoolClient`. */
 type Queryable = Pick<Pool, 'query'>;
 
 /** A `provider_credentials` row as returned by Postgres. */
@@ -56,48 +56,41 @@ export interface CredentialRepository {
   delete(key: CredentialKey): Promise<boolean>;
 }
 
-/** Build a {@link CredentialRepository} over the given query executor. */
-export function createCredentialRepository(
-  db: Queryable,
-): CredentialRepository {
-  return {
-    async upsert(params: UpsertCredentialParams): Promise<void> {
-      await db.query(
-        `INSERT INTO provider_credentials
-           (tenant_id, provider, ciphertext, key_version)
-         VALUES ($1, $2, $3, $4)
-         ON CONFLICT (tenant_id, provider) DO UPDATE
-           SET ciphertext = EXCLUDED.ciphertext,
-               key_version = EXCLUDED.key_version,
-               updated_at = now()`,
-        [
-          params.tenantId,
-          params.provider,
-          params.ciphertext,
-          params.keyVersion,
-        ],
-      );
-    },
+/** {@link CredentialRepository} over a query executor (`Pool` or `PoolClient`). */
+export class DefaultCredentialRepository implements CredentialRepository {
+  constructor(private readonly db: Queryable) {}
 
-    async find(key: CredentialKey): Promise<ProviderCredential | null> {
-      const { rows } = await db.query<CredentialRow>(
-        `SELECT id, tenant_id, provider, ciphertext, key_version,
-                created_at, updated_at
-         FROM provider_credentials
-         WHERE tenant_id = $1 AND provider = $2`,
-        [key.tenantId, key.provider],
-      );
-      const row = rows[0];
-      return row === undefined ? null : toCredential(row);
-    },
+  async upsert(params: UpsertCredentialParams): Promise<void> {
+    await this.db.query(
+      `INSERT INTO provider_credentials
+         (tenant_id, provider, ciphertext, key_version)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (tenant_id, provider) DO UPDATE
+         SET ciphertext = EXCLUDED.ciphertext,
+             key_version = EXCLUDED.key_version,
+             updated_at = now()`,
+      [params.tenantId, params.provider, params.ciphertext, params.keyVersion],
+    );
+  }
 
-    async delete(key: CredentialKey): Promise<boolean> {
-      const { rowCount } = await db.query(
-        `DELETE FROM provider_credentials
-         WHERE tenant_id = $1 AND provider = $2`,
-        [key.tenantId, key.provider],
-      );
-      return (rowCount ?? 0) > 0;
-    },
-  };
+  async find(key: CredentialKey): Promise<ProviderCredential | null> {
+    const { rows } = await this.db.query<CredentialRow>(
+      `SELECT id, tenant_id, provider, ciphertext, key_version,
+              created_at, updated_at
+       FROM provider_credentials
+       WHERE tenant_id = $1 AND provider = $2`,
+      [key.tenantId, key.provider],
+    );
+    const row = rows[0];
+    return row === undefined ? null : toCredential(row);
+  }
+
+  async delete(key: CredentialKey): Promise<boolean> {
+    const { rowCount } = await this.db.query(
+      `DELETE FROM provider_credentials
+       WHERE tenant_id = $1 AND provider = $2`,
+      [key.tenantId, key.provider],
+    );
+    return (rowCount ?? 0) > 0;
+  }
 }

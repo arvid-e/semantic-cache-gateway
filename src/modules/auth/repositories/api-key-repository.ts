@@ -1,7 +1,7 @@
 import type { Pool } from 'pg';
 import type { GatewayApiKey } from '../types.js';
 
-/** See {@link createApiKeyRepository}; accepts a `Pool` or a `PoolClient`. */
+/** See {@link DefaultApiKeyRepository}; accepts a `Pool` or a `PoolClient`. */
 type Queryable = Pick<Pool, 'query'>;
 
 /** A `gateway_api_keys` row as returned by Postgres. */
@@ -51,42 +51,42 @@ export interface ApiKeyRepository {
   revoke(params: { tenantId: string; id: string }): Promise<boolean>;
 }
 
-/** Build an {@link ApiKeyRepository} over the given query executor. */
-export function createApiKeyRepository(db: Queryable): ApiKeyRepository {
-  return {
-    async insert(params: InsertApiKeyParams): Promise<GatewayApiKey> {
-      const { rows } = await db.query<ApiKeyRow>(
-        `INSERT INTO gateway_api_keys (tenant_id, key_hash, key_prefix)
-         VALUES ($1, $2, $3)
-         RETURNING id, tenant_id, key_hash, key_prefix, created_at, revoked_at`,
-        [params.tenantId, params.keyHash, params.keyPrefix],
-      );
-      const row = rows[0];
-      if (row === undefined) {
-        throw new Error('INSERT gateway_api_keys RETURNING produced no row');
-      }
-      return toApiKey(row);
-    },
+/** {@link ApiKeyRepository} over a query executor (`Pool` or `PoolClient`). */
+export class DefaultApiKeyRepository implements ApiKeyRepository {
+  constructor(private readonly db: Queryable) {}
 
-    async findByHash(keyHash: Buffer): Promise<GatewayApiKey | null> {
-      const { rows } = await db.query<ApiKeyRow>(
-        `SELECT id, tenant_id, key_hash, key_prefix, created_at, revoked_at
-         FROM gateway_api_keys
-         WHERE key_hash = $1`,
-        [keyHash],
-      );
-      const row = rows[0];
-      return row === undefined ? null : toApiKey(row);
-    },
+  async insert(params: InsertApiKeyParams): Promise<GatewayApiKey> {
+    const { rows } = await this.db.query<ApiKeyRow>(
+      `INSERT INTO gateway_api_keys (tenant_id, key_hash, key_prefix)
+       VALUES ($1, $2, $3)
+       RETURNING id, tenant_id, key_hash, key_prefix, created_at, revoked_at`,
+      [params.tenantId, params.keyHash, params.keyPrefix],
+    );
+    const row = rows[0];
+    if (row === undefined) {
+      throw new Error('INSERT gateway_api_keys RETURNING produced no row');
+    }
+    return toApiKey(row);
+  }
 
-    async revoke(params: { tenantId: string; id: string }): Promise<boolean> {
-      const { rowCount } = await db.query(
-        `UPDATE gateway_api_keys
-         SET revoked_at = now()
-         WHERE id = $1 AND tenant_id = $2 AND revoked_at IS NULL`,
-        [params.id, params.tenantId],
-      );
-      return (rowCount ?? 0) > 0;
-    },
-  };
+  async findByHash(keyHash: Buffer): Promise<GatewayApiKey | null> {
+    const { rows } = await this.db.query<ApiKeyRow>(
+      `SELECT id, tenant_id, key_hash, key_prefix, created_at, revoked_at
+       FROM gateway_api_keys
+       WHERE key_hash = $1`,
+      [keyHash],
+    );
+    const row = rows[0];
+    return row === undefined ? null : toApiKey(row);
+  }
+
+  async revoke(params: { tenantId: string; id: string }): Promise<boolean> {
+    const { rowCount } = await this.db.query(
+      `UPDATE gateway_api_keys
+       SET revoked_at = now()
+       WHERE id = $1 AND tenant_id = $2 AND revoked_at IS NULL`,
+      [params.id, params.tenantId],
+    );
+    return (rowCount ?? 0) > 0;
+  }
 }

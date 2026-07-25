@@ -1,13 +1,13 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import type { AuthConfig } from '../config.js';
-import { createEnvelopeEncryption } from '../crypto/envelope-encryption.js';
+import { DefaultEnvelopeEncryption } from '../crypto/envelope-encryption.js';
 import type {
   CredentialKey,
   CredentialRepository,
   UpsertCredentialParams,
 } from '../repositories/credential-repository.js';
 import { DecryptionError, type ProviderCredential } from '../types.js';
-import { createCredentialService } from './credential-service.js';
+import { DefaultCredentialService } from './credential-service.js';
 
 /** In-memory credential repository keyed by `${tenantId}|${provider}`. */
 function fakeCredentialRepository(): CredentialRepository & {
@@ -45,13 +45,13 @@ const encryptionConfig: AuthConfig['encryption'] = {
 };
 
 function makeService(repo = fakeCredentialRepository()) {
-  const encryption = createEnvelopeEncryption(encryptionConfig);
-  return { service: createCredentialService(encryption, repo), repo };
+  const encryption = new DefaultEnvelopeEncryption(encryptionConfig);
+  return { service: new DefaultCredentialService(encryption, repo), repo };
 }
 
 const SECRET = 'sk-openai-abc123';
 
-describe('createCredentialService', () => {
+describe('DefaultCredentialService', () => {
   it('stores only ciphertext and decrypts back to the original secret', async () => {
     const { service, repo } = makeService();
 

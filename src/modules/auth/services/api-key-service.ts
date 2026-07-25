@@ -31,34 +31,36 @@ export interface ApiKeyService {
   authenticate(presentedKey: string): Promise<AuthenticationResult>;
 }
 
-/** Build an {@link ApiKeyService} over the key-hash util and key repository. */
-export function createApiKeyService(
-  keyHash: KeyHashUtil,
-  apiKeys: ApiKeyRepository,
-): ApiKeyService {
-  return {
-    async issueKey(tenantId: string): Promise<IssuedApiKey> {
-      const generated = keyHash.generateGatewayKey();
-      const stored = await apiKeys.insert({
-        tenantId,
-        keyHash: generated.hash,
-        keyPrefix: generated.prefix,
-      });
-      return {
-        id: stored.id,
-        plaintext: generated.plaintext,
-        prefix: generated.prefix,
-      };
-    },
+/** {@link ApiKeyService} over the key-hash util and the key repository. */
+export class DefaultApiKeyService implements ApiKeyService {
+  constructor(
+    private readonly keyHash: KeyHashUtil,
+    private readonly apiKeys: ApiKeyRepository,
+  ) {}
 
-    async authenticate(presentedKey: string): Promise<AuthenticationResult> {
-      const found = await apiKeys.findByHash(keyHash.hash(presentedKey));
-      // Not authenticated unless a key matched and is still active: a `null`
-      // lookup yields `undefined` here, and a revoked key a non-null date.
-      if (found?.revokedAt !== null) {
-        return { tenantId: null };
-      }
-      return { tenantId: found.tenantId };
-    },
-  };
+  async issueKey(tenantId: string): Promise<IssuedApiKey> {
+    const generated = this.keyHash.generateGatewayKey();
+    const stored = await this.apiKeys.insert({
+      tenantId,
+      keyHash: generated.hash,
+      keyPrefix: generated.prefix,
+    });
+    return {
+      id: stored.id,
+      plaintext: generated.plaintext,
+      prefix: generated.prefix,
+    };
+  }
+
+  async authenticate(presentedKey: string): Promise<AuthenticationResult> {
+    const found = await this.apiKeys.findByHash(
+      this.keyHash.hash(presentedKey),
+    );
+    // Not authenticated unless a key matched and is still active: a `null`
+    // lookup yields `undefined` here, and a revoked key a non-null date.
+    if (found?.revokedAt !== null) {
+      return { tenantId: null };
+    }
+    return { tenantId: found.tenantId };
+  }
 }

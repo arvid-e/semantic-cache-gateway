@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { TenantRepository } from '../repositories/tenant-repository.js';
 import type { Tenant } from '../types.js';
-import { createTenantService } from './tenant-service.js';
+import { DefaultTenantService } from './tenant-service.js';
 
 /** In-memory tenant repository that assigns a fresh unique id per insert. */
 function fakeTenantRepository(): TenantRepository {
@@ -23,9 +23,9 @@ function fakeTenantRepository(): TenantRepository {
   };
 }
 
-describe('createTenantService', () => {
+describe('DefaultTenantService', () => {
   it('creates a tenant and returns it with a unique id', async () => {
-    const service = createTenantService(fakeTenantRepository());
+    const service = new DefaultTenantService(fakeTenantRepository());
 
     const tenant = await service.createTenant('Acme');
     expect(tenant.name).toBe('Acme');
@@ -33,7 +33,7 @@ describe('createTenantService', () => {
   });
 
   it('gives each created tenant a distinct id', async () => {
-    const service = createTenantService(fakeTenantRepository());
+    const service = new DefaultTenantService(fakeTenantRepository());
 
     const a = await service.createTenant('Acme');
     const b = await service.createTenant('Acme');

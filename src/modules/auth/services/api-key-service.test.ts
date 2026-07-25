@@ -1,11 +1,11 @@
 import { randomBytes, randomUUID } from 'node:crypto';
-import { createKeyHashUtil } from '../crypto/key-hash.js';
+import { DefaultKeyHashUtil } from '../crypto/key-hash.js';
 import type {
   ApiKeyRepository,
   InsertApiKeyParams,
 } from '../repositories/api-key-repository.js';
 import type { GatewayApiKey } from '../types.js';
-import { createApiKeyService } from './api-key-service.js';
+import { DefaultApiKeyService } from './api-key-service.js';
 
 /**
  * In-memory api-key repository keyed by hash. Captures inserted params so a test
@@ -51,12 +51,12 @@ const PEPPER = randomBytes(32);
 
 function makeService(repo = fakeApiKeyRepository()) {
   return {
-    service: createApiKeyService(createKeyHashUtil(PEPPER), repo),
+    service: new DefaultApiKeyService(new DefaultKeyHashUtil(PEPPER), repo),
     repo,
   };
 }
 
-describe('createApiKeyService', () => {
+describe('DefaultApiKeyService', () => {
   it('issues a key returning the plaintext once while storing only the hash', async () => {
     const { service, repo } = makeService();
 
@@ -71,7 +71,7 @@ describe('createApiKeyService', () => {
     const stored = repo.inserted[0];
     expect(stored?.keyHash).toBeInstanceOf(Buffer);
     expect(JSON.stringify(stored)).not.toContain(issued.plaintext);
-    expect(createKeyHashUtil(PEPPER).hash(issued.plaintext)).toEqual(
+    expect(new DefaultKeyHashUtil(PEPPER).hash(issued.plaintext)).toEqual(
       stored?.keyHash,
     );
   });

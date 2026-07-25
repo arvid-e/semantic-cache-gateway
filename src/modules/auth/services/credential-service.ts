@@ -35,40 +35,42 @@ export interface CredentialService {
   ): Promise<ProviderSecret | null>;
 }
 
-/**
- * Build a {@link CredentialService} over the envelope-encryption util and the
- * credential repository.
- */
-export function createCredentialService(
-  encryption: EnvelopeEncryption,
-  credentials: CredentialRepository,
-): CredentialService {
-  return {
-    async attachOrRotate(
-      tenantId: string,
-      provider: ProviderName,
-      secret: string,
-    ): Promise<void> {
-      const { ciphertext, keyVersion } = encryption.encrypt(secret);
-      await credentials.upsert({ tenantId, provider, ciphertext, keyVersion });
-    },
+/** {@link CredentialService} over envelope encryption and the credential repo. */
+export class DefaultCredentialService implements CredentialService {
+  constructor(
+    private readonly encryption: EnvelopeEncryption,
+    private readonly credentials: CredentialRepository,
+  ) {}
 
-    async remove(tenantId: string, provider: ProviderName): Promise<void> {
-      await credentials.delete({ tenantId, provider });
-    },
+  async attachOrRotate(
+    tenantId: string,
+    provider: ProviderName,
+    secret: string,
+  ): Promise<void> {
+    const { ciphertext, keyVersion } = this.encryption.encrypt(secret);
+    await this.credentials.upsert({
+      tenantId,
+      provider,
+      ciphertext,
+      keyVersion,
+    });
+  }
 
-    async getDecrypted(
-      tenantId: string,
-      provider: ProviderName,
-    ): Promise<ProviderSecret | null> {
-      const stored = await credentials.find({ tenantId, provider });
-      if (stored === null) return null;
-      // Decrypts transiently; may throw DecryptionError (handled upstream).
-      const plaintext = encryption.decrypt(
-        stored.ciphertext,
-        stored.keyVersion,
-      );
-      return new ProviderSecret(plaintext);
-    },
-  };
+  async remove(tenantId: string, provider: ProviderName): Promise<void> {
+    await this.credentials.delete({ tenantId, provider });
+  }
+
+  async getDecrypted(
+    tenantId: string,
+    provider: ProviderName,
+  ): Promise<ProviderSecret | null> {
+    const stored = await this.credentials.find({ tenantId, provider });
+    if (stored === null) return null;
+    // Decrypts transiently; may throw DecryptionError (handled upstream).
+    const plaintext = this.encryption.decrypt(
+      stored.ciphertext,
+      stored.keyVersion,
+    );
+    return new ProviderSecret(plaintext);
+  }
 }

@@ -49,36 +49,33 @@ export interface KeyHashUtil {
 }
 
 /**
- * Build a {@link KeyHashUtil} bound to the gateway-key pepper from the auth
- * config. The pepper never leaves this closure.
- *
- * @param pepper - HMAC key from `AuthConfig.gatewayKeyPepper`.
+ * {@link KeyHashUtil} bound to the gateway-key pepper from the auth config. The
+ * pepper is held privately and never leaves the instance.
  */
-export function createKeyHashUtil(pepper: Buffer): KeyHashUtil {
-  function hash(key: string): Buffer {
-    return createHmac('sha256', pepper).update(key).digest();
+export class DefaultKeyHashUtil implements KeyHashUtil {
+  /** @param pepper - HMAC key from `AuthConfig.gatewayKeyPepper`. */
+  constructor(private readonly pepper: Buffer) {}
+
+  generateGatewayKey(): GeneratedGatewayKey {
+    const body = randomBytes(KEY_ENTROPY_BYTES).toString('base64url');
+    const plaintext = `${KEY_SCHEME}${body}`;
+    return {
+      plaintext,
+      prefix: `${KEY_SCHEME}${body.slice(0, PREFIX_BODY_LENGTH)}`,
+      hash: this.hash(plaintext),
+    };
   }
 
-  return {
-    generateGatewayKey(): GeneratedGatewayKey {
-      const body = randomBytes(KEY_ENTROPY_BYTES).toString('base64url');
-      const plaintext = `${KEY_SCHEME}${body}`;
-      return {
-        plaintext,
-        prefix: `${KEY_SCHEME}${body.slice(0, PREFIX_BODY_LENGTH)}`,
-        hash: hash(plaintext),
-      };
-    },
+  hash(key: string): Buffer {
+    return createHmac('sha256', this.pepper).update(key).digest();
+  }
 
-    hash,
-
-    matches(key: string, storedHash: Buffer): boolean {
-      const candidate = hash(key);
-      // `timingSafeEqual` throws on a length mismatch, so guard it. Our hashes
-      // are always 32 bytes; a differing length means a definite non-match and
-      // is rejected without a comparison (the length itself is not secret).
-      if (candidate.length !== storedHash.length) return false;
-      return timingSafeEqual(candidate, storedHash);
-    },
-  };
+  matches(key: string, storedHash: Buffer): boolean {
+    const candidate = this.hash(key);
+    // `timingSafeEqual` throws on a length mismatch, so guard it. Our hashes
+    // are always 32 bytes; a differing length means a definite non-match and
+    // is rejected without a comparison (the length itself is not secret).
+    if (candidate.length !== storedHash.length) return false;
+    return timingSafeEqual(candidate, storedHash);
+  }
 }

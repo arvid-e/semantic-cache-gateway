@@ -15,11 +15,11 @@ export interface TenantService {
   createTenant(name: string): Promise<Tenant>;
 }
 
-/** Build a {@link TenantService} over the tenant repository. */
-export function createTenantService(tenants: TenantRepository): TenantService {
-  return {
-    createTenant(name: string): Promise<Tenant> {
-      return tenants.insert(name);
-    },
-  };
+/** {@link TenantService} over the tenant repository. */
+export class DefaultTenantService implements TenantService {
+  constructor(private readonly tenants: TenantRepository) {}
+
+  createTenant(name: string): Promise<Tenant> {
+    return this.tenants.insert(name);
+  }
 }
