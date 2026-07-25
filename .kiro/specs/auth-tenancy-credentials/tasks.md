@@ -6,7 +6,7 @@
 > `ProviderSecret` consumed downstream — see `.kiro/steering/implementation-guide.md`.
 
 - [ ] 1. Foundation: schema, config, and shared contracts
-- [ ] 1.1 Author the auth database migration
+- [x] 1.1 Author the auth database migration
   - Add this spec's migration creating `tenants`, `gateway_api_keys` (unique `key_hash`, non-secret `key_prefix`, nullable `revoked_at`), and `provider_credentials` (encrypted `ciphertext`, `key_version`, unique `(tenant_id, provider)`, provider check constraint), with tenant foreign keys and indexes
   - Observable: running migrations creates the three tables with the tenant foreign keys, the unique `key_hash` and `(tenant_id, provider)` constraints, and no plaintext secret column in any table
   - _File: migrations/{timestamp}_auth_tenancy.sql_
