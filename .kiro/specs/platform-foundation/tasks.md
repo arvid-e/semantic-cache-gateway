@@ -68,7 +68,7 @@
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 9.5_
   - _Boundary: Request Context_
 
-- [ ] 4. Integration: health endpoints and application assembly
+- [x] 4. Integration: health endpoints and application assembly
 - [x] 4.1 Implement liveness and readiness endpoints
   - Serve a liveness endpoint returning success once the server accepts requests (no datastore checks) and a readiness endpoint that checks both Postgres and Redis, succeeding only when both are reachable
   - On a failed readiness check, respond with a failure status that names the unhealthy dependency without exposing connection secrets; keep both endpoints unauthenticated
@@ -92,14 +92,14 @@
   - _Requirements: 1.1, 1.2, 1.3, 1.4_
   - _Depends: 3.3, 4.2_
 
-- [ ] 5. Local environment via Docker Compose
+- [x] 5. Local environment via Docker Compose
 - [x] 5.1 Containerize the gateway with a migrate-then-serve entrypoint
   - Author the image build and container entrypoint that runs database migrations before starting the server
   - Observable: building and running the container applies migrations and then starts the listening service
   - _File: Dockerfile_
   - _Requirements: 8.2_
   - _Depends: 4.3_
-- [ ] 5.2 Define the Docker Compose stack with health-gated startup
+- [x] 5.2 Define the Docker Compose stack with health-gated startup
   - Compose the gateway alongside PostgreSQL (`pgvector`), Redis, and Ollama with healthchecks; gate the gateway's startup on the backing services reporting healthy and supply it the configuration to reach each one
   - Observable: `docker compose up` starts all four services, the gateway starts only after dependencies are healthy, and its readiness endpoint responds healthy with no manual configuration
   - _File: docker-compose.yml_
@@ -116,3 +116,4 @@
 
 ## Implementation Notes
 - 5.1: The container "migrate-then-serve" behavior is provided by `src/index.ts` itself (loadConfig → runMigrations → listen, Req 1.1), so the Dockerfile entrypoint is just `node ./dist/index.js` — invoking the migrate CLI separately would migrate twice. Exec form keeps node as PID 1 for SIGTERM-driven graceful shutdown (Req 1.4). Runtime image needs `package.json` (for `"type":"module"` + `#src/*`→`./dist/*` import map) and `migrations/` sitting beside `dist/` (migrate.ts resolves `../../../migrations`). Image is `node:24-slim`; all runtime deps are pure-JS. For 5.2, the Compose gateway healthcheck hits `/health/ready` — `node:slim` has no `curl`; use a `node -e fetch(...)` probe or add curl.
+- 5.2: Compose gates the gateway with `depends_on: { <svc>: { condition: service_healthy } }` on postgres/redis/ollama; healthchecks are `pg_isready`, `redis-cli ping`, `ollama list` (in-image, no curl), and a `node -e fetch('/health/ready')` probe for the gateway. Datastore ports are published (5432/6379) so host-run integration tests (task 6.1) reach the same instances. All env is inlined with `${VAR:-default}` so `docker compose up` needs zero manual config; for 6.1, integration tests read connection settings from env (task 1.2) — point them at `localhost:5432`/`localhost:6379`.
