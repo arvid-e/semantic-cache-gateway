@@ -41,7 +41,7 @@
   - _Depends: 1.2_
 
 - [ ] 3. Data access
-- [ ] 3.1 Implement tenant-scoped auth repositories
+- [x] 3.1 Implement tenant-scoped auth repositories
   - Implement tenant, gateway-key, and provider-credential repositories over the shared Postgres client: insert/lookup tenants, insert/lookup-by-hash/revoke gateway keys, and upsert/get/delete credentials by `(tenant, provider)`; every query is scoped by tenant
   - Observable: a gateway-key lookup by hash returns the owning tenant, a credential upsert respects the `(tenant, provider)` uniqueness, and a lookup scoped to one tenant never returns another tenant's row
   - _File: src/modules/auth/repositories/tenant-repository.ts, api-key-repository.ts, credential-repository.ts_
