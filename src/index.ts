@@ -1,6 +1,7 @@
 import closeWithGrace from 'close-with-grace';
 import { loadConfig } from '#src/platform/config/load-config.js';
 import { runMigrations } from '#src/platform/db/migrate.js';
+import { loadAuthConfig } from '#src/modules/auth/config.js';
 import { buildApp } from '#src/app.js';
 
 /**
@@ -38,10 +39,14 @@ const LISTEN_HOST = '0.0.0.0';
  */
 async function start(): Promise<void> {
   const config = loadConfig();
+  // The auth module owns a separate env segment (keyring, pepper, admin token);
+  // load and validate it here so a bad auth environment fails fast at startup,
+  // before migrations or binding a port.
+  const authConfig = loadAuthConfig();
 
   await runMigrations(config);
 
-  const app = buildApp(config);
+  const app = buildApp(config, authConfig);
   await app.ready();
 
   // Registered before `listen` so a signal arriving mid-boot is still handled.
