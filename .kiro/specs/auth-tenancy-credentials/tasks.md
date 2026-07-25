@@ -80,7 +80,7 @@
   - _Depends: 4.3, 1.3_
 
 - [ ] 5. Integration: middleware, admin API, and plugin wiring
-- [ ] 5.1 Implement the gateway authentication middleware
+- [x] 5.1 Implement the gateway authentication middleware
   - Extract and authenticate the gateway API key, set the tenant identity in the shared request context, and reject missing/unknown/invalid keys before any downstream processing; never write the key to the context
   - Observable: a valid key sets the request-context tenant identity and allows the request to proceed, while a missing or invalid key returns unauthorized without invoking downstream processing
   - _File: src/modules/auth/middleware/authenticate.ts_
