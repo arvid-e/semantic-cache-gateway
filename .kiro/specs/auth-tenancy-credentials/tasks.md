@@ -24,15 +24,15 @@
   - _Requirements: 2.5, 4.4, 6.3_
   - _Boundary: Auth types, ProviderSecret_
 
-- [ ] 2. Cryptographic primitives
-- [ ] 2.1 (P) Implement gateway API-key hashing and generation
+- [x] 2. Cryptographic primitives
+- [x] 2.1 (P) Implement gateway API-key hashing and generation
   - Generate high-entropy `scg_`-prefixed keys, derive a non-secret prefix, compute the keyed hash from the configured pepper, and compare candidates in constant time
   - Observable: the same key and pepper always produce the same hash, a wrong key does not match, comparison is constant-time, and a generated key carries the expected prefix
   - _File: src/modules/auth/crypto/key-hash.ts_
   - _Requirements: 2.4, 6.4_
   - _Boundary: Key Hash Util_
   - _Depends: 1.2_
-- [ ] 2.2 (P) Implement provider-credential envelope encryption
+- [x] 2.2 (P) Implement provider-credential envelope encryption
   - Encrypt secrets with AES-256-GCM using the active keyring version and a fresh per-message nonce, encode `iv‖authTag‖ciphertext`, and decrypt by selecting the key for the stored version
   - Observable: encrypt→decrypt round-trips a secret; a tampered ciphertext or auth tag fails; an unknown or invalid key version raises a typed error whose message contains no ciphertext or key material
   - _File: src/modules/auth/crypto/envelope-encryption.ts_
