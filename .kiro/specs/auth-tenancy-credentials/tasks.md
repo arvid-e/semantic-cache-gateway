@@ -11,7 +11,7 @@
   - Observable: running migrations creates the three tables with the tenant foreign keys, the unique `key_hash` and `(tenant_id, provider)` constraints, and no plaintext secret column in any table
   - _File: migrations/{timestamp}_auth_tenancy.sql_
   - _Requirements: 1.1, 1.3, 2.4, 3.2, 3.3_
-- [ ] 1.2 (P) Implement the auth config segment
+- [x] 1.2 (P) Implement the auth config segment
   - Validate the auth environment segment (encryption keyring with an active version, gateway-key pepper, admin token) with fail-fast, secret-safe semantics consistent with the foundation loader
   - Observable: an invalid or missing auth setting fails plugin configuration with an error naming the setting and never printing its value; a valid environment yields a typed read-only auth config
   - _File: src/modules/auth/config.ts_
