@@ -101,7 +101,7 @@
   - _Requirements: 5.3, 5.5_
   - _Boundary: Admin Routes_
   - _Depends: 4.3, 5.2_
-- [ ] 5.4 Register the auth plugin and confirm redaction and endpoint scoping
+- [x] 5.4 Register the auth plugin and confirm redaction and endpoint scoping
   - Register the auth module onto the foundation app, expose the credential resolver and authentication middleware for downstream specs, keep the foundation health endpoints unauthenticated, and confirm the shared logger redacts the auth secret fields
   - Observable: the app boots with the auth plugin registered and the resolver exposed, the health endpoints remain reachable without authentication, and log output contains no gateway keys, provider credentials, pepper, or encryption key material
   - _File: src/modules/auth/index.ts, src/app.ts_

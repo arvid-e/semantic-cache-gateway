@@ -6,6 +6,8 @@ import { pgPlugin } from '#src/platform/db/pg-plugin.js';
 import { redisPlugin } from '#src/platform/redis/redis-plugin.js';
 import { contextPlugin } from '#src/platform/context/context-plugin.js';
 import { healthPlugin } from '#src/platform/health/health-plugin.js';
+import { authPlugin } from '#src/modules/auth/index.js';
+import type { AuthConfig } from '#src/modules/auth/config.js';
 
 /**
  * Assemble the shared Fastify host from validated config.
@@ -31,8 +33,18 @@ import { healthPlugin } from '#src/platform/health/health-plugin.js';
  * redaction policy are consistent everywhere (Req 3.1, 3.3); Fastify's built-in
  * request/response logging then emits a structured line per request lifecycle
  * with method, route, status code, and latency (Req 3.4).
+ *
+ * The optional `authConfig` opts the auth module into the app: when supplied,
+ * the auth plugin registers after the datastore and context plugins (it builds
+ * repositories over `app.pg`), exposing `app.credentialResolver` and
+ * `app.authenticate` and mounting the admin API. The production bootstrap always
+ * supplies it; tests that exercise only the foundation omit it. Its own
+ * (separate) validated config is loaded by the bootstrap, not from `app.config`.
  */
-export function buildApp(config: Config): FastifyInstance {
+export function buildApp(
+  config: Config,
+  authConfig?: AuthConfig,
+): FastifyInstance {
   const app = Fastify({ logger: buildLoggerOptions(config) });
 
   // Expose the validated config on the shared instance before any plugin
@@ -50,6 +62,13 @@ export function buildApp(config: Config): FastifyInstance {
   // liveness/readiness probes.
   app.register(contextPlugin);
   app.register(healthPlugin);
+
+  // Domain modules extend the host. Auth registers last, after `app.pg` and the
+  // request context it depends on; its guard is scoped to the admin routes, so
+  // the health endpoints above stay unauthenticated.
+  if (authConfig !== undefined) {
+    app.register(authPlugin, { authConfig });
+  }
 
   return app;
 }
