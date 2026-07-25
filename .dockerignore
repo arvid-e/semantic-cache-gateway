@@ -1,0 +1,28 @@
+# Keep the build context small and host-specific artifacts out of the image.
+# Host node_modules can be the wrong architecture; dist is rebuilt in-image;
+# .env carries local secrets that must never be baked in.
+node_modules
+dist
+build
+
+# Local secrets and env files
+.env
+.env.*
+!.env.example
+
+# VCS and tooling
+.git
+.gitignore
+.dockerignore
+Dockerfile
+docker-compose.yml
+
+# Specs, steering, and agent config are not runtime inputs
+.kiro
+.claude
+CLAUDE.md
+
+# Tests and coverage
+coverage
+**/*.test.ts
+**/*.integration.test.ts

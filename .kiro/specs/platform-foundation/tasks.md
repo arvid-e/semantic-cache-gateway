@@ -93,7 +93,7 @@
   - _Depends: 3.3, 4.2_
 
 - [ ] 5. Local environment via Docker Compose
-- [ ] 5.1 Containerize the gateway with a migrate-then-serve entrypoint
+- [x] 5.1 Containerize the gateway with a migrate-then-serve entrypoint
   - Author the image build and container entrypoint that runs database migrations before starting the server
   - Observable: building and running the container applies migrations and then starts the listening service
   - _File: Dockerfile_
@@ -113,3 +113,6 @@
   - _File: src/platform/health/readiness.integration.test.ts_
   - _Requirements: 6.1, 6.2, 6.3, 8.3, 4.3, 5.3, 9.4, 9.5_
   - _Depends: 4.3, 5.2_
+
+## Implementation Notes
+- 5.1: The container "migrate-then-serve" behavior is provided by `src/index.ts` itself (loadConfig → runMigrations → listen, Req 1.1), so the Dockerfile entrypoint is just `node ./dist/index.js` — invoking the migrate CLI separately would migrate twice. Exec form keeps node as PID 1 for SIGTERM-driven graceful shutdown (Req 1.4). Runtime image needs `package.json` (for `"type":"module"` + `#src/*`→`./dist/*` import map) and `migrations/` sitting beside `dist/` (migrate.ts resolves `../../../migrations`). Image is `node:24-slim`; all runtime deps are pure-JS. For 5.2, the Compose gateway healthcheck hits `/health/ready` — `node:slim` has no `curl`; use a `node -e fetch(...)` probe or add curl.
