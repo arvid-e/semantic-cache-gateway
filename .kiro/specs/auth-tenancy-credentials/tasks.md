@@ -64,7 +64,7 @@
   - _Requirements: 2.1, 2.3, 2.4, 5.2, 6.4_
   - _Boundary: ApiKeyService_
   - _Depends: 2.1, 3.1_
-- [ ] 4.3 (P) Implement the credential service
+- [x] 4.3 (P) Implement the credential service
   - Attach/rotate (encrypt then upsert), remove, and decrypt-in-memory provider credentials scoped to `(tenant, provider)`, supporting multiple providers per tenant
   - Observable: attaching a credential stores ciphertext only, retrieval decrypts back to the original secret, rotation replaces it, removal deletes it, and a tenant can hold credentials for two providers at once
   - _File: src/modules/auth/services/credential-service.ts_
