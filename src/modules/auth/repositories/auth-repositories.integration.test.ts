@@ -2,9 +2,18 @@ import { randomBytes } from 'node:crypto';
 import { Pool } from 'pg';
 import { loadConfig } from '#src/platform/config/load-config.js';
 import { runMigrations } from '#src/platform/db/migrate.js';
-import { createTenantRepository } from './tenant-repository.js';
-import { createApiKeyRepository } from './api-key-repository.js';
-import { createCredentialRepository } from './credential-repository.js';
+import {
+  DefaultTenantRepository,
+  type TenantRepository,
+} from './tenant-repository.js';
+import {
+  DefaultApiKeyRepository,
+  type ApiKeyRepository,
+} from './api-key-repository.js';
+import {
+  DefaultCredentialRepository,
+  type CredentialRepository,
+} from './credential-repository.js';
 
 // Repository behaviour against dockerized Postgres (task 3.1): proves tenant
 // scoping, hash lookup, and `(tenant, provider)` uniqueness on the real schema.
@@ -24,17 +33,17 @@ const silent = {
 };
 
 let pool: Pool;
-let tenants: ReturnType<typeof createTenantRepository>;
-let apiKeys: ReturnType<typeof createApiKeyRepository>;
-let credentials: ReturnType<typeof createCredentialRepository>;
+let tenants: TenantRepository;
+let apiKeys: ApiKeyRepository;
+let credentials: CredentialRepository;
 
 beforeAll(async () => {
   const config = loadConfig();
   await runMigrations(config, silent);
   pool = new Pool({ connectionString: config.postgres.url });
-  tenants = createTenantRepository(pool);
-  apiKeys = createApiKeyRepository(pool);
-  credentials = createCredentialRepository(pool);
+  tenants = new DefaultTenantRepository(pool);
+  apiKeys = new DefaultApiKeyRepository(pool);
+  credentials = new DefaultCredentialRepository(pool);
 });
 
 afterAll(async () => {

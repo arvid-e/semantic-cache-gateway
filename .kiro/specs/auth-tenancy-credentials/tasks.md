@@ -40,7 +40,7 @@
   - _Boundary: Envelope Encryption Util_
   - _Depends: 1.2_
 
-- [ ] 3. Data access
+- [x] 3. Data access
 - [x] 3.1 Implement tenant-scoped auth repositories
   - Implement tenant, gateway-key, and provider-credential repositories over the shared Postgres client: insert/lookup tenants, insert/lookup-by-hash/revoke gateway keys, and upsert/get/delete credentials by `(tenant, provider)`; every query is scoped by tenant
   - Observable: a gateway-key lookup by hash returns the owning tenant, a credential upsert respects the `(tenant, provider)` uniqueness, and a lookup scoped to one tenant never returns another tenant's row
@@ -49,29 +49,29 @@
   - _Boundary: Auth Repositories_
   - _Depends: 1.1_
 
-- [ ] 4. Services and credential resolution
-- [ ] 4.1 (P) Implement the tenant service
+- [x] 4. Services and credential resolution
+- [x] 4.1 (P) Implement the tenant service
   - Create tenants with a stable unique identifier
   - Observable: creating a tenant persists a row with a unique id returned to the caller
   - _File: src/modules/auth/services/tenant-service.ts_
   - _Requirements: 1.1_
   - _Boundary: TenantService_
   - _Depends: 3.1_
-- [ ] 4.2 (P) Implement the gateway API-key service
+- [x] 4.2 (P) Implement the gateway API-key service
   - Issue keys (persist only the hash and prefix, return the plaintext exactly once) and authenticate a presented key to its owning tenant, keeping gateway keys distinct from provider keys
   - Observable: issuing a key returns the plaintext once while storage holds only the hash; authenticating a valid key resolves to exactly one tenant and an unknown key resolves to no tenant
   - _File: src/modules/auth/services/api-key-service.ts_
   - _Requirements: 2.1, 2.3, 2.4, 5.2, 6.4_
   - _Boundary: ApiKeyService_
   - _Depends: 2.1, 3.1_
-- [ ] 4.3 (P) Implement the credential service
+- [x] 4.3 (P) Implement the credential service
   - Attach/rotate (encrypt then upsert), remove, and decrypt-in-memory provider credentials scoped to `(tenant, provider)`, supporting multiple providers per tenant
   - Observable: attaching a credential stores ciphertext only, retrieval decrypts back to the original secret, rotation replaces it, removal deletes it, and a tenant can hold credentials for two providers at once
   - _File: src/modules/auth/services/credential-service.ts_
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 5.3_
   - _Boundary: CredentialService_
   - _Depends: 2.2, 3.1_
-- [ ] 4.4 Implement the BYOK credential resolver
+- [x] 4.4 Implement the BYOK credential resolver
   - Resolve a provider credential from a per-request key (used without persisting) or, absent that, from decrypted storage; return a typed missing result when neither exists and a typed decryption-failure result on decrypt error; wrap resolved secrets in the redacting wrapper
   - Observable: a per-request key resolves without being persisted, a stored credential resolves decrypted, absence returns `missing`, a decrypt failure returns `decryption_failed`, and the resolved secret is a `ProviderSecret`
   - _File: src/modules/auth/services/credential-resolver.ts_

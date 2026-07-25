@@ -42,68 +42,73 @@ export interface EnvelopeEncryption {
 }
 
 /**
- * Build an {@link EnvelopeEncryption} over the auth config's keyring. The active
- * key is resolved once here; the full keyring is retained so ciphertext written
- * under an older version still decrypts after rotation.
- *
- * @param encryption - `AuthConfig.encryption` (keyring + active version). Config
- * validation guarantees the active version maps to a 32-byte key.
+ * {@link EnvelopeEncryption} over the auth config's keyring. The active key is
+ * resolved once in the constructor; the full keyring is retained so ciphertext
+ * written under an older version still decrypts after rotation.
  */
-export function createEnvelopeEncryption(
-  encryption: AuthConfig['encryption'],
-): EnvelopeEncryption {
-  const { keyring, activeKeyVersion } = encryption;
+export class DefaultEnvelopeEncryption implements EnvelopeEncryption {
+  private readonly keyring: AuthConfig['encryption']['keyring'];
+  private readonly activeKeyVersion: number;
+  private readonly activeKey: Buffer;
 
-  const activeKey = keyring.get(activeKeyVersion);
-  // Config validation already enforces this; guard defensively so a misuse
-  // surfaces as a plain invariant error, never a silent undefined-key crash.
-  // The message names the version (non-secret), never key material.
-  if (activeKey === undefined) {
-    throw new Error(
-      `No encryption key configured for active version ${String(activeKeyVersion)}`,
-    );
+  /**
+   * @param encryption - `AuthConfig.encryption` (keyring + active version).
+   * Config validation guarantees the active version maps to a 32-byte key.
+   */
+  constructor(encryption: AuthConfig['encryption']) {
+    this.keyring = encryption.keyring;
+    this.activeKeyVersion = encryption.activeKeyVersion;
+
+    const activeKey = this.keyring.get(this.activeKeyVersion);
+    // Config validation already enforces this; guard defensively so a misuse
+    // surfaces as a plain invariant error, never a silent undefined-key crash.
+    // The message names the version (non-secret), never key material.
+    if (activeKey === undefined) {
+      throw new Error(
+        `No encryption key configured for active version ${String(this.activeKeyVersion)}`,
+      );
+    }
+    this.activeKey = activeKey;
   }
 
-  return {
-    encrypt(plaintext: string): EncryptedSecret {
-      const iv = randomBytes(IV_BYTES);
-      const cipher = createCipheriv(ALGORITHM, activeKey, iv);
-      const sealed = Buffer.concat([
-        cipher.update(plaintext, 'utf8'),
-        cipher.final(),
-      ]);
-      const authTag = cipher.getAuthTag();
-      return {
-        ciphertext: Buffer.concat([iv, authTag, sealed]),
-        keyVersion: activeKeyVersion,
-      };
-    },
+  encrypt(plaintext: string): EncryptedSecret {
+    const iv = randomBytes(IV_BYTES);
+    const cipher = createCipheriv(ALGORITHM, this.activeKey, iv);
+    const sealed = Buffer.concat([
+      cipher.update(plaintext, 'utf8'),
+      cipher.final(),
+    ]);
+    const authTag = cipher.getAuthTag();
+    return {
+      ciphertext: Buffer.concat([iv, authTag, sealed]),
+      keyVersion: this.activeKeyVersion,
+    };
+  }
 
-    decrypt(ciphertext: Buffer, keyVersion: number): string {
-      const key = keyring.get(keyVersion);
-      if (key === undefined) throw new DecryptionError(keyVersion);
+  decrypt(ciphertext: Buffer, keyVersion: number): string {
+    const key = this.keyring.get(keyVersion);
+    if (key === undefined) throw new DecryptionError(keyVersion);
 
-      // Reject anything too short to hold a nonce and tag before slicing.
-      if (ciphertext.length < IV_BYTES + AUTH_TAG_BYTES) {
-        throw new DecryptionError(keyVersion);
-      }
+    // Reject anything too short to hold a nonce and tag before slicing.
+    if (ciphertext.length < IV_BYTES + AUTH_TAG_BYTES) {
+      throw new DecryptionError(keyVersion);
+    }
 
-      const iv = ciphertext.subarray(0, IV_BYTES);
-      const authTag = ciphertext.subarray(IV_BYTES, IV_BYTES + AUTH_TAG_BYTES);
-      const sealed = ciphertext.subarray(IV_BYTES + AUTH_TAG_BYTES);
+    const iv = ciphertext.subarray(0, IV_BYTES);
+    const authTag = ciphertext.subarray(IV_BYTES, IV_BYTES + AUTH_TAG_BYTES);
+    const sealed = ciphertext.subarray(IV_BYTES + AUTH_TAG_BYTES);
 
-      try {
-        const decipher = createDecipheriv(ALGORITHM, key, iv);
-        decipher.setAuthTag(authTag);
-        // `final()` throws if the tag does not authenticate (tampering or a
-        // wrong key). The cause is a generic crypto error with no secret in it.
-        return Buffer.concat([
-          decipher.update(sealed),
-          decipher.final(),
-        ]).toString('utf8');
-      } catch (cause) {
-        throw new DecryptionError(keyVersion, { cause });
-      }
-    },
-  };
+    try {
+      const decipher = createDecipheriv(ALGORITHM, key, iv);
+      decipher.setAuthTag(authTag);
+      // `final()` throws if the tag does not authenticate (tampering or a
+      // wrong key). The cause is a generic crypto error with no secret in it.
+      return Buffer.concat([
+        decipher.update(sealed),
+        decipher.final(),
+      ]).toString('utf8');
+    } catch (cause) {
+      throw new DecryptionError(keyVersion, { cause });
+    }
+  }
 }

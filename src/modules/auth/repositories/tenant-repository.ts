@@ -33,32 +33,32 @@ export interface TenantRepository {
   findById(id: string): Promise<Tenant | null>;
 }
 
-/** Build a {@link TenantRepository} over the given query executor. */
-export function createTenantRepository(db: Queryable): TenantRepository {
-  return {
-    async insert(name: string): Promise<Tenant> {
-      const { rows } = await db.query<TenantRow>(
-        `INSERT INTO tenants (name)
-         VALUES ($1)
-         RETURNING id, name, status, created_at`,
-        [name],
-      );
-      const row = rows[0];
-      if (row === undefined) {
-        throw new Error('INSERT tenants RETURNING produced no row');
-      }
-      return toTenant(row);
-    },
+/** {@link TenantRepository} over a query executor (`Pool` or `PoolClient`). */
+export class DefaultTenantRepository implements TenantRepository {
+  constructor(private readonly db: Queryable) {}
 
-    async findById(id: string): Promise<Tenant | null> {
-      const { rows } = await db.query<TenantRow>(
-        `SELECT id, name, status, created_at
-         FROM tenants
-         WHERE id = $1`,
-        [id],
-      );
-      const row = rows[0];
-      return row === undefined ? null : toTenant(row);
-    },
-  };
+  async insert(name: string): Promise<Tenant> {
+    const { rows } = await this.db.query<TenantRow>(
+      `INSERT INTO tenants (name)
+       VALUES ($1)
+       RETURNING id, name, status, created_at`,
+      [name],
+    );
+    const row = rows[0];
+    if (row === undefined) {
+      throw new Error('INSERT tenants RETURNING produced no row');
+    }
+    return toTenant(row);
+  }
+
+  async findById(id: string): Promise<Tenant | null> {
+    const { rows } = await this.db.query<TenantRow>(
+      `SELECT id, name, status, created_at
+       FROM tenants
+       WHERE id = $1`,
+      [id],
+    );
+    const row = rows[0];
+    return row === undefined ? null : toTenant(row);
+  }
 }
