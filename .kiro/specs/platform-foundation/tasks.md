@@ -106,8 +106,8 @@
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 4.5_
   - _Depends: 5.1_
 
-- [ ] 6. Validation: foundation integration tests
-- [ ] 6.1 Add integration tests proving the foundation against dockerized dependencies
+- [x] 6. Validation: foundation integration tests
+- [x] 6.1 Add integration tests proving the foundation against dockerized dependencies
   - Boot the application against dockerized Postgres and Redis and assert: readiness returns success when both are up; readiness returns a failure naming the dependency (no secrets) when one is unreachable; liveness succeeds independent of datastore state; and the `vector` extension is present after migrations
   - Observable: the integration suite passes against the dockerized dependencies, exercising readiness success/failure, liveness, and pgvector availability
   - _File: src/platform/health/readiness.integration.test.ts_
@@ -117,3 +117,4 @@
 ## Implementation Notes
 - 5.1: The container "migrate-then-serve" behavior is provided by `src/index.ts` itself (loadConfig → runMigrations → listen, Req 1.1), so the Dockerfile entrypoint is just `node ./dist/index.js` — invoking the migrate CLI separately would migrate twice. Exec form keeps node as PID 1 for SIGTERM-driven graceful shutdown (Req 1.4). Runtime image needs `package.json` (for `"type":"module"` + `#src/*`→`./dist/*` import map) and `migrations/` sitting beside `dist/` (migrate.ts resolves `../../../migrations`). Image is `node:24-slim`; all runtime deps are pure-JS. For 5.2, the Compose gateway healthcheck hits `/health/ready` — `node:slim` has no `curl`; use a `node -e fetch(...)` probe or add curl.
 - 5.2: Compose gates the gateway with `depends_on: { <svc>: { condition: service_healthy } }` on postgres/redis/ollama; healthchecks are `pg_isready`, `redis-cli ping`, `ollama list` (in-image, no curl), and a `node -e fetch('/health/ready')` probe for the gateway. Datastore ports are published (5432/6379) so host-run integration tests (task 6.1) reach the same instances. All env is inlined with `${VAR:-default}` so `docker compose up` needs zero manual config; for 6.1, integration tests read connection settings from env (task 1.2) — point them at `localhost:5432`/`localhost:6379`.
+- 6.1: The integration suite reads connection settings from env, so it needs `docker compose up -d postgres redis` then `POSTGRES_URL/REDIS_URL/OLLAMA_URL=... npm run test:integration` (OLLAMA_URL only needs to be a valid URL; buildApp opens no Ollama connection). The readiness-failure path can't boot the full app (an unreachable datastore rejects at `app.ready()`, Req 1.3), so it registers `healthPlugin` on a bare Fastify wired to the real (up) `app.pg` pool plus a real ioredis pointed at a dead port (`lazyConnect`, `enableOfflineQueue:false`, `retryStrategy:()=>null`, plus an `error` listener or the process crashes). `beforeAll` runs `runMigrations` (idempotent) so the suite is self-contained and proves pgvector (Req 5.3). Readiness body statuses are `'ok' | 'unavailable'` (not `'unhealthy'`).
