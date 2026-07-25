@@ -29,6 +29,12 @@ export interface ApiKeyService {
    * never treated as provider keys (Req 2.5).
    */
   authenticate(presentedKey: string): Promise<AuthenticationResult>;
+  /**
+   * Revoke a tenant's key by id. Scoped to the owning tenant; returns `true`
+   * when an active key was revoked, `false` if none matched or it was already
+   * revoked (the admin route maps `false` to 404).
+   */
+  revoke(tenantId: string, keyId: string): Promise<boolean>;
 }
 
 /** {@link ApiKeyService} over the key-hash util and the key repository. */
@@ -62,5 +68,9 @@ export class DefaultApiKeyService implements ApiKeyService {
       return { tenantId: null };
     }
     return { tenantId: found.tenantId };
+  }
+
+  revoke(tenantId: string, keyId: string): Promise<boolean> {
+    return this.apiKeys.revoke({ tenantId, id: keyId });
   }
 }

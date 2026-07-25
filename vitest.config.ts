@@ -29,6 +29,11 @@ export default defineConfig({
         test: {
           name: 'integration',
           include: ['src/**/*.integration.test.ts'],
+          // Integration files share one database and each brings the schema
+          // current in `beforeAll`. Run them one at a time so their migration
+          // runs don't race for node-pg-migrate's advisory lock (which is set
+          // to fail, not wait, on contention).
+          fileParallelism: false,
         },
       },
     ],

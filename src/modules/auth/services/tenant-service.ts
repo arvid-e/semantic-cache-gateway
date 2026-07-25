@@ -13,6 +13,11 @@ import type { Tenant } from '../types.js';
 export interface TenantService {
   /** Create a tenant and return it, including its freshly minted unique id. */
   createTenant(name: string): Promise<Tenant>;
+  /**
+   * Fetch a tenant by id, or `null` if none exists. Used by the admin routes to
+   * answer 404 before provisioning a key or credential against a missing tenant.
+   */
+  getTenant(id: string): Promise<Tenant | null>;
 }
 
 /** {@link TenantService} over the tenant repository. */
@@ -21,5 +26,9 @@ export class DefaultTenantService implements TenantService {
 
   createTenant(name: string): Promise<Tenant> {
     return this.tenants.insert(name);
+  }
+
+  getTenant(id: string): Promise<Tenant | null> {
+    return this.tenants.findById(id);
   }
 }

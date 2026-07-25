@@ -79,29 +79,29 @@
   - _Boundary: CredentialResolver_
   - _Depends: 4.3, 1.3_
 
-- [ ] 5. Integration: middleware, admin API, and plugin wiring
-- [ ] 5.1 Implement the gateway authentication middleware
+- [x] 5. Integration: middleware, admin API, and plugin wiring
+- [x] 5.1 Implement the gateway authentication middleware
   - Extract and authenticate the gateway API key, set the tenant identity in the shared request context, and reject missing/unknown/invalid keys before any downstream processing; never write the key to the context
   - Observable: a valid key sets the request-context tenant identity and allows the request to proceed, while a missing or invalid key returns unauthorized without invoking downstream processing
   - _File: src/modules/auth/middleware/authenticate.ts_
   - _Requirements: 1.2, 2.1, 2.2, 2.3, 6.3_
   - _Boundary: Auth Middleware_
   - _Depends: 4.2_
-- [ ] 5.2 Implement admin authorization and tenant/key provisioning routes
+- [x] 5.2 Implement admin authorization and tenant/key provisioning routes
   - Add the admin authorization guard (constant-time token check that rejects and makes no change on failure) and the routes to create a tenant and to issue and revoke a gateway key, returning the issued key plaintext only once
   - Observable: a request without valid admin authorization is rejected and makes no change; creating a tenant and issuing a key succeed; the issue-key response exposes the plaintext exactly once and stores only the hash
   - _File: src/modules/auth/middleware/admin-guard.ts, src/modules/auth/routes/admin-routes.ts_
   - _Requirements: 5.1, 5.2, 5.4, 6.4_
   - _Boundary: Admin Guard, Admin Routes_
   - _Depends: 4.1, 4.2, 1.2_
-- [ ] 5.3 Implement provider-credential provisioning routes
+- [x] 5.3 Implement provider-credential provisioning routes
   - Add the admin routes to attach, rotate, and remove a tenant's provider credential, never returning stored secret material in any response
   - Observable: attach/rotate/remove update the tenant's encrypted credential store, and no response returns a stored provider credential or previously issued key
   - _File: src/modules/auth/routes/admin-routes.ts_
   - _Requirements: 5.3, 5.5_
   - _Boundary: Admin Routes_
   - _Depends: 4.3, 5.2_
-- [ ] 5.4 Register the auth plugin and confirm redaction and endpoint scoping
+- [x] 5.4 Register the auth plugin and confirm redaction and endpoint scoping
   - Register the auth module onto the foundation app, expose the credential resolver and authentication middleware for downstream specs, keep the foundation health endpoints unauthenticated, and confirm the shared logger redacts the auth secret fields
   - Observable: the app boots with the auth plugin registered and the resolver exposed, the health endpoints remain reachable without authentication, and log output contains no gateway keys, provider credentials, pepper, or encryption key material
   - _File: src/modules/auth/index.ts, src/app.ts_
