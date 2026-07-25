@@ -355,6 +355,11 @@ The system self-observes via `/metrics`; internal telemetry errors are logged th
 
 ## Testing Strategy
 
+Tests are co-located with the file under test (see `structure.md`): unit tests as `<name>.test.ts`
+beside `<name>.ts`, integration tests as `<name>.integration.test.ts` beside the module they
+exercise. There is no separate `test/` tree; the two Vitest suites are selected by filename suffix,
+not by directory.
+
 ### Unit Tests
 - Cost estimator: cache hit with a pricing entry computes `tokens·rates`; live records zero; a missing `(provider, model)` returns null without throwing (2.1, 2.3, 2.5).
 - Metrics: an update from a record increments the right series with bounded labels; no secret/content label is emitted (3.2, 3.3, 3.4, 6.2).

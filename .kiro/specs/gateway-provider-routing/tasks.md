@@ -97,6 +97,6 @@
 - [ ] 5.1 Add integration tests for the completion flow
   - Exercise end-to-end flows against stubbed provider endpoints (and the Compose Ollama service): an authenticated request selects the provider, uses the BYOK key, and returns a normalized response with the resolved model and token usage; each of the three providers routes to its adapter; an unsupported provider and a missing credential are rejected without a provider call; and no provider-specific field leaks into the normalized response
   - Observable: the integration suite passes, proving provider selection, BYOK invocation, normalized responses across providers, missing-credential and unsupported-provider rejection, and absence of provider-specific leakage
-  - _File: test/integration/gateway.test.ts_
+  - _File: src/modules/gateway/gateway.integration.test.ts_
   - _Requirements: 1.1, 2.1, 2.2, 2.3, 2.4, 3.2, 3.3, 4.4_
   - _Depends: 4.2_

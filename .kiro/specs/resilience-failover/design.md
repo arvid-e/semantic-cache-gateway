@@ -285,6 +285,11 @@ Structured logs of failover decisions and breaker transitions (tenant, provider,
 
 ## Testing Strategy
 
+Tests are co-located with the file under test (see `structure.md`): unit tests as `<name>.test.ts`
+beside `<name>.ts`, integration tests as `<name>.integration.test.ts` beside the module they
+exercise. There is no separate `test/` tree; the two Vitest suites are selected by filename suffix,
+not by directory.
+
 ### Unit Tests
 - Failover policy: resolves the configured secondary for a primary; returns none when unmapped (1.5).
 - Breaker transitions: threshold reached within window → open; success resets the window; a half-open probe result closes or re-opens (2.1, 2.2, 3.3, 3.4).

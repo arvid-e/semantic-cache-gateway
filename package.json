@@ -1,0 +1,59 @@
+{
+  "name": "semantic-cache-gateway",
+  "version": "1.0.0",
+  "description": "BYOK LLM gateway with semantic caching and multi-provider failover",
+  "homepage": "https://github.com/arvid-e/semantic-cache-gateway#readme",
+  "bugs": {
+    "url": "https://github.com/arvid-e/semantic-cache-gateway/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arvid-e/semantic-cache-gateway.git"
+  },
+  "license": "ISC",
+  "author": "Arvid Edvinsson",
+  "type": "module",
+  "main": "index.js",
+  "imports": {
+    "#src/*": {
+      "types": "./src/*",
+      "default": "./dist/*"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node ./dist/index.js",
+    "migrate": "npm run build && node ./dist/platform/db/migrate.js",
+    "dev": "tsc && node ./dist/index.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint ./src --fix",
+    "format": "prettier ./src --write",
+    "test": "vitest run --project unit",
+    "test:watch": "vitest --project unit",
+    "test:integration": "vitest run --project integration"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.1.1",
+    "@types/pg": "^8.20.0",
+    "@vitest/ui": "^4.1.10",
+    "eslint": "^10.7.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.7.0",
+    "prettier": "^3.9.5",
+    "typescript": "^6.0.2",
+    "typescript-eslint": "^8.64.0",
+    "vitest": "^4.1.10"
+  },
+  "dependencies": {
+    "close-with-grace": "^2.5.0",
+    "fastify": "^5.10.0",
+    "fastify-plugin": "^6.0.0",
+    "ioredis": "^5.11.1",
+    "node-pg-migrate": "^9.0.0",
+    "pg": "^8.22.0",
+    "pgvector": "^0.3.0",
+    "pino": "^10.3.1",
+    "zod": "^4.4.3"
+  }
+}

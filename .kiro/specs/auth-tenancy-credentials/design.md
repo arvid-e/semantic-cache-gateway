@@ -486,6 +486,11 @@ Structured logs via the shared logger with redaction; auth outcomes logged witho
 
 ## Testing Strategy
 
+Tests are co-located with the file under test (see `structure.md`): unit tests as `<name>.test.ts`
+beside `<name>.ts`, integration tests as `<name>.integration.test.ts` beside the module they
+exercise. There is no separate `test/` tree; the two Vitest suites are selected by filename suffix,
+not by directory.
+
 ### Unit Tests
 - Key Hash Util: same key+pepper → identical hash; wrong key → no match; `timingSafeEqual` used; generated key has expected prefix (2.4, 6.4).
 - Envelope Encryption: encrypt→decrypt round-trips; tampered ciphertext/auth-tag fails; unknown `key_version` raises `DecryptionError` with no secret in the message (3.1, 3.4, 3.5).

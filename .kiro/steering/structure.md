@@ -41,16 +41,21 @@ internals stay private to the module.
 - **Types/interfaces/classes**: `PascalCase` (e.g. `ProviderAdapter`, `RequestContext`).
 - **Functions/variables**: `camelCase`.
 - **Constants/env keys**: `UPPER_SNAKE_CASE`.
+- **Tests**: co-located next to the file under test, never in a separate `test/` tree.
+  Unit tests are `<name>.test.ts` beside `<name>.ts`; integration tests (those that need
+  dockerized Postgres/Redis/Ollama) are `<name>.integration.test.ts` beside the module they
+  exercise. The suffix — not the folder — is what separates the unit and integration suites.
 
 ## Import Organization
 
 ```typescript
-import { RequestContext } from '@/platform/context'   // absolute for cross-module/shared
+import { RequestContext } from '#src/platform/context/index.js'   // absolute for cross-module/shared
 import { normalizeResponse } from './normalizer'       // relative within a module
 ```
 
 **Path Aliases**:
-- `@/`: maps to `src/`.
+- `#src/`: maps to `src/` (Node.js subpath imports via package.json `"imports"`; note the `#src/`
+  prefix — Node reserves the bare `#/` form as invalid). Include the `.js` extension on ESM imports.
 
 ## Code Organization Principles
 

@@ -399,6 +399,11 @@ Structured logs of the decision path (status, topic-shift, verification) without
 
 ## Testing Strategy
 
+Tests are co-located with the file under test (see `structure.md`): unit tests as `<name>.test.ts`
+beside `<name>.ts`, integration tests as `<name>.integration.test.ts` beside the module they
+exercise. There is no separate `test/` tree; the two Vitest suites are selected by filename suffix,
+not by directory.
+
 ### Unit Tests
 - Key composer: identical `(tenant, model, params, messages)` yield the same key; any change yields a different key (2.1).
 - Topic-shift detector: no prior AI → standalone; below threshold → standalone; at/above → context-dependent (5.1–5.4).
