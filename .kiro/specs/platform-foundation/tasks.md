@@ -84,7 +84,7 @@
   - _File: src/app.ts, src/types/fastify.d.ts_
   - _Requirements: 1.1, 1.5, 3.1, 3.4, 4.5_
   - _Depends: 2.2, 3.1, 3.2, 3.4, 4.1_
-- [ ] 4.3 Implement the entrypoint bootstrap sequence and graceful shutdown
+- [x] 4.3 Implement the entrypoint bootstrap sequence and graceful shutdown
   - Drive startup in order — load config, run migrations, build the app, and begin listening only after all startup dependencies initialize successfully; abort with a descriptive error and non-zero exit if any step fails
   - On a termination signal, stop accepting new requests, close datastore connections, and exit gracefully
   - Observable: the service listens only after config, migrations, and datastore connections succeed; a failed dependency exits non-zero; a termination signal drains and closes connections before exit
