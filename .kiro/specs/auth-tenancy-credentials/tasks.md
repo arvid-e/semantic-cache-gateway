@@ -57,7 +57,7 @@
   - _Requirements: 1.1_
   - _Boundary: TenantService_
   - _Depends: 3.1_
-- [ ] 4.2 (P) Implement the gateway API-key service
+- [x] 4.2 (P) Implement the gateway API-key service
   - Issue keys (persist only the hash and prefix, return the plaintext exactly once) and authenticate a presented key to its owning tenant, keeping gateway keys distinct from provider keys
   - Observable: issuing a key returns the plaintext once while storage holds only the hash; authenticating a valid key resolves to exactly one tenant and an unknown key resolves to no tenant
   - _File: src/modules/auth/services/api-key-service.ts_
