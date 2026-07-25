@@ -69,7 +69,7 @@
   - _Boundary: Request Context_
 
 - [ ] 4. Integration: health endpoints and application assembly
-- [ ] 4.1 Implement liveness and readiness endpoints
+- [x] 4.1 Implement liveness and readiness endpoints
   - Serve a liveness endpoint returning success once the server accepts requests (no datastore checks) and a readiness endpoint that checks both Postgres and Redis, succeeding only when both are reachable
   - On a failed readiness check, respond with a failure status that names the unhealthy dependency without exposing connection secrets; keep both endpoints unauthenticated
   - Observable: liveness returns success independent of datastore state; readiness returns success when both datastores are up and a failure naming the down dependency (no secrets) when one is unreachable
@@ -77,14 +77,14 @@
   - _Requirements: 6.1, 6.2, 6.3, 6.4_
   - _Boundary: Health Plugin_
   - _Depends: 3.1, 3.2_
-- [ ] 4.2 Assemble the application host with shared plugins and request logging
+- [x] 4.2 Assemble the application host with shared plugins and request logging
   - Build the Fastify application from config with the shared logger, registering the configuration, Postgres, Redis, request-context, and health plugins so that only the two datastores' clients are wired and domain modules can later register their own routes/middleware without editing the bootstrap
   - Emit structured request start/completion logs with method, route, status code, and latency
   - Observable: the assembled app boots with all foundation plugins registered, logs each request's lifecycle with the correlating metadata, and accepts registration of an additional plugin without bootstrap changes
   - _File: src/app.ts, src/types/fastify.d.ts_
   - _Requirements: 1.1, 1.5, 3.1, 3.4, 4.5_
   - _Depends: 2.2, 3.1, 3.2, 3.4, 4.1_
-- [ ] 4.3 Implement the entrypoint bootstrap sequence and graceful shutdown
+- [x] 4.3 Implement the entrypoint bootstrap sequence and graceful shutdown
   - Drive startup in order — load config, run migrations, build the app, and begin listening only after all startup dependencies initialize successfully; abort with a descriptive error and non-zero exit if any step fails
   - On a termination signal, stop accepting new requests, close datastore connections, and exit gracefully
   - Observable: the service listens only after config, migrations, and datastore connections succeed; a failed dependency exits non-zero; a termination signal drains and closes connections before exit
