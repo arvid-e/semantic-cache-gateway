@@ -11,7 +11,7 @@
   - Observable: the request/response/adapter/error contracts are exported, the adapter's only return type is the normalized response, and the supported provider set is exactly three
   - _File: src/modules/gateway/types.ts_
   - _Requirements: 1.4, 2.3, 3.1, 4.2, 4.4_
-- [ ] 1.2 (P) Implement the gateway config segment
+- [x] 1.2 (P) Implement the gateway config segment
   - Validate the gateway environment segment (provider base URLs, request timeout, default max tokens, anthropic version) with fail-fast, secret-safe semantics; Ollama's base URL reuses the foundation setting
   - Observable: an invalid or missing gateway setting fails plugin configuration naming the setting, and a valid environment yields a typed read-only gateway config
   - _File: src/modules/gateway/config.ts_
@@ -103,4 +103,6 @@
 
 ## Implementation Notes
 - 1.1: the normalized usage type is `NormalizedUsage` (`promptTokens`/`completionTokens`/`totalTokens`), deliberately distinct from the foundation's `TokenUsage` (`prompt`/`completion`/`total`) — task 3.2 must map between them, not assign across.
+- 1.2: `loadGatewayConfig(foundation, env)` takes a `Pick<Config, 'ollama'>` slice — the gateway never re-reads `OLLAMA_URL`. Task 4.2's plugin passes `app.config`, and 4.2 still owns documenting the five gateway vars in `.env.example`.
+- 1.2: every gateway setting is optional with a code-owned default, so the plugin boots on an empty gateway environment; only an *invalid* value fails registration.
 - 1.1: `ProviderError` takes `(message, { provider, kind, status?, cause? })`; `status` is typed `number | undefined` rather than optional because `exactOptionalPropertyTypes` is on. Adapters (2.1–2.3) must pass only a non-secret `cause` — a provider SDK error can carry the request headers.
