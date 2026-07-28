@@ -6,7 +6,7 @@
 > and defines the shared `ProviderAdapter` — see `.kiro/steering/implementation-guide.md`.
 
 - [ ] 1. Foundation: contracts, config, validation, and mapping
-- [ ] 1.1 Define the gateway contracts and shared adapter interface
+- [x] 1.1 Define the gateway contracts and shared adapter interface
   - Define the provider-agnostic request type (full `messages` array, provider/model, common params), the normalized response type (content/role, token usage, resolved model, finish reason), the closed `FinishReason` union, the `ProviderAdapter` interface returning only the normalized response, and a `ProviderError` that carries no credential
   - Observable: the request/response/adapter/error contracts are exported, the adapter's only return type is the normalized response, and the supported provider set is exactly three
   - _File: src/modules/gateway/types.ts_
@@ -100,3 +100,7 @@
   - _File: src/modules/gateway/gateway.integration.test.ts_
   - _Requirements: 1.1, 2.1, 2.2, 2.3, 2.4, 3.2, 3.3, 4.4_
   - _Depends: 4.2_
+
+## Implementation Notes
+- 1.1: the normalized usage type is `NormalizedUsage` (`promptTokens`/`completionTokens`/`totalTokens`), deliberately distinct from the foundation's `TokenUsage` (`prompt`/`completion`/`total`) — task 3.2 must map between them, not assign across.
+- 1.1: `ProviderError` takes `(message, { provider, kind, status?, cause? })`; `status` is typed `number | undefined` rather than optional because `exactOptionalPropertyTypes` is on. Adapters (2.1–2.3) must pass only a non-secret `cause` — a provider SDK error can carry the request headers.
