@@ -17,7 +17,7 @@
   - _File: src/modules/gateway/config.ts_
   - _Requirements: 3.4, 3.5_
   - _Boundary: Gateway Config_
-- [ ] 1.3 (P) Implement request and response schema validation
+- [x] 1.3 (P) Implement request and response schema validation
   - Author the boundary JSON Schema for the provider-agnostic request (conversation `messages` array, provider/model selection, generation params) and the normalized response, rejecting invalid input before any provider call
   - Observable: a valid payload passes while a missing `messages` array, an unknown provider, or an out-of-range param is rejected with a client error and no provider is called
   - _File: src/modules/gateway/schema.ts_
@@ -103,6 +103,9 @@
 
 ## Implementation Notes
 - 1.1: the normalized usage type is `NormalizedUsage` (`promptTokens`/`completionTokens`/`totalTokens`), deliberately distinct from the foundation's `TokenUsage` (`prompt`/`completion`/`total`) — task 3.2 must map between them, not assign across.
+- 1.3: Fastify compiles schemas with Ajv `removeAdditional: true`, so `additionalProperties: false` *strips* undeclared fields instead of rejecting them. Any field that must fail loudly has to be declared explicitly — that is why `stream` is in the request schema as `const: false`.
+- 1.3: the request schema admits `temperature` 0–2 (OpenAI's range, the widest of the three). Anthropic caps at 1, so task 2.2 must clamp or reject rather than pass a value through.
+- 1.3: the 200 response schema strips undeclared fields on serialization, so it is a real backstop for Req 4.2 — but only on routes that actually declare it; task 4.1 must use `completionsRouteSchema`, not just the body schema.
 - 1.2: `loadGatewayConfig(foundation, env)` takes a `Pick<Config, 'ollama'>` slice — the gateway never re-reads `OLLAMA_URL`. Task 4.2's plugin passes `app.config`, and 4.2 still owns documenting the five gateway vars in `.env.example`.
 - 1.2: every gateway setting is optional with a code-owned default, so the plugin boots on an empty gateway environment; only an *invalid* value fails registration.
 - 1.1: `ProviderError` takes `(message, { provider, kind, status?, cause? })`; `status` is typed `number | undefined` rather than optional because `exactOptionalPropertyTypes` is on. Adapters (2.1–2.3) must pass only a non-secret `cause` — a provider SDK error can carry the request headers.
