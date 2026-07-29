@@ -33,7 +33,7 @@
   - _Depends: 1.1_
 
 - [ ] 2. Provider adapters and selection
-- [ ] 2.1 (P) Implement the OpenAI adapter
+- [x] 2.1 (P) Implement the OpenAI adapter
   - Translate the agnostic request into an OpenAI chat completion call using the tenant key (SDK, `maxRetries: 0`, per-call timeout) and normalize the response (message, finish reason, usage) into the unified schema, throwing a credential-free `ProviderError` on upstream error/timeout
   - Observable: a stubbed OpenAI response normalizes to the unified schema with resolved model and token usage, and a simulated upstream error surfaces as a `ProviderError` carrying no credential
   - _File: src/modules/gateway/providers/openai-adapter.ts_

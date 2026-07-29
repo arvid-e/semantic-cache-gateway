@@ -51,6 +51,7 @@
     "fastify-plugin": "^6.0.0",
     "ioredis": "^5.11.1",
     "node-pg-migrate": "^9.0.0",
+    "openai": "^7.0.0",
     "pg": "^8.22.0",
     "pgvector": "^0.3.0",
     "pino": "^10.3.1",
