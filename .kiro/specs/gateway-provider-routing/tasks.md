@@ -32,7 +32,7 @@
   - _Boundary: Mapping Helpers_
   - _Depends: 1.1_
 
-- [ ] 2. Provider adapters and selection
+- [x] 2. Provider adapters and selection
 - [x] 2.1 (P) Implement the OpenAI adapter
   - Translate the agnostic request into an OpenAI chat completion call using the tenant key (SDK, `maxRetries: 0`, per-call timeout) and normalize the response (message, finish reason, usage) into the unified schema, throwing a credential-free `ProviderError` on upstream error/timeout
   - Observable: a stubbed OpenAI response normalizes to the unified schema with resolved model and token usage, and a simulated upstream error surfaces as a `ProviderError` carrying no credential
@@ -54,7 +54,7 @@
   - _Requirements: 3.1, 3.4, 3.5, 4.1, 4.2_
   - _Boundary: Ollama Adapter_
   - _Depends: 1.1, 1.2, 1.4_
-- [ ] 2.4 Implement the provider registry
+- [x] 2.4 Implement the provider registry
   - Register exactly the three adapters and resolve a provider name to its adapter, rejecting any unknown or unsupported provider
   - Observable: each of the three supported providers resolves to its adapter, an unsupported provider raises an unsupported-provider error, and no fourth provider is registrable
   - _File: src/modules/gateway/providers/provider-registry.ts_
@@ -110,6 +110,9 @@
 - 1.3: the 200 response schema strips undeclared fields on serialization, so it is a real backstop for Req 4.2 — but only on routes that actually declare it; task 4.1 must use `completionsRouteSchema`, not just the body schema.
 - 1.2: `loadGatewayConfig(foundation, env)` takes a `Pick<Config, 'ollama'>` slice — the gateway never re-reads `OLLAMA_URL`. Task 4.2's plugin passes `app.config`, and 4.2 still owns documenting the five gateway vars in `.env.example`.
 - 1.2: every gateway setting is optional with a code-owned default, so the plugin boots on an empty gateway environment; only an *invalid* value fails registration.
+- 2.4: `UnsupportedProviderError` lives in `provider-registry.ts`, deliberately *not* in `types.ts` — it is not a `ProviderError`. Nothing was called, so task 4.1 maps it onto a client error (400), not an upstream one.
+- 2.4: adapters are looked up through a `Map`, not by indexing the record. A plain-object lookup resolves inherited keys (`constructor`, `toString`) to something truthy, and `noUncheckedIndexedAccess` does not add `| undefined` to a finite-union `Record`, so the guard would also lint as unreachable. The record literal still exists for its compile-time exhaustiveness (Req 2.3).
+- 2.4: the registry is built once at plugin registration, not per request — adapters are stateless and hold only deployment config; the credential and per-call opts arrive on each `complete` call.
 - 2.3: no SDK, so the adapter owns the timeout itself — an `AbortController` armed for `timeoutMs` and cleared only after the body is read, so a slow body counts against the same budget. Whether a failure was a timeout is read from `controller.signal.aborted`, *not* the rejection's `name` (`AbortError` vs `TimeoutError` has varied across Node releases).
 - 2.3: an Ollama error body is never read into the `ProviderError` — only the status. Unlike the two SDKs, which mask keys in their own messages, whatever fronts an Ollama server can echo the credential in its 401 body (Req 4.3). Pinned by a test; don't "improve" the error by attaching the body.
 - 2.3: Ollama returns no completion id, so the adapter mints `ollama-<uuid>` — that is what `NormalizedResponse.id` being "the adapter supplies a stable value" is for. Its generation params also live under `options` (and max-tokens is `num_predict`), and it takes `system` turns inline, so nothing is lifted the way 2.2 must.
