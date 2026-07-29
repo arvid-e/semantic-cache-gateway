@@ -47,7 +47,7 @@
   - _Requirements: 3.1, 3.4, 3.5, 4.1, 4.2_
   - _Boundary: Anthropic Adapter_
   - _Depends: 1.1, 1.2, 1.4_
-- [ ] 2.3 (P) Implement the Ollama adapter
+- [x] 2.3 (P) Implement the Ollama adapter
   - Translate the agnostic request into an Ollama `/api/chat` call with `stream:false` via HTTP with an abort timeout, and normalize the response (message content, done reason, summed prompt-eval and eval token counts) into the unified schema
   - Observable: a stubbed Ollama response normalizes to the unified schema with a single complete message and summed token counts
   - _File: src/modules/gateway/providers/ollama-adapter.ts_
@@ -110,6 +110,9 @@
 - 1.3: the 200 response schema strips undeclared fields on serialization, so it is a real backstop for Req 4.2 — but only on routes that actually declare it; task 4.1 must use `completionsRouteSchema`, not just the body schema.
 - 1.2: `loadGatewayConfig(foundation, env)` takes a `Pick<Config, 'ollama'>` slice — the gateway never re-reads `OLLAMA_URL`. Task 4.2's plugin passes `app.config`, and 4.2 still owns documenting the five gateway vars in `.env.example`.
 - 1.2: every gateway setting is optional with a code-owned default, so the plugin boots on an empty gateway environment; only an *invalid* value fails registration.
+- 2.3: no SDK, so the adapter owns the timeout itself — an `AbortController` armed for `timeoutMs` and cleared only after the body is read, so a slow body counts against the same budget. Whether a failure was a timeout is read from `controller.signal.aborted`, *not* the rejection's `name` (`AbortError` vs `TimeoutError` has varied across Node releases).
+- 2.3: an Ollama error body is never read into the `ProviderError` — only the status. Unlike the two SDKs, which mask keys in their own messages, whatever fronts an Ollama server can echo the credential in its 401 body (Req 4.3). Pinned by a test; don't "improve" the error by attaching the body.
+- 2.3: Ollama returns no completion id, so the adapter mints `ollama-<uuid>` — that is what `NormalizedResponse.id` being "the adapter supplies a stable value" is for. Its generation params also live under `options` (and max-tokens is `num_predict`), and it takes `system` turns inline, so nothing is lifted the way 2.2 must.
 - 2.2: `temperature` is *clamped* to Anthropic's max of 1, not rejected — resilience-failover retries the same agnostic request against a different provider, so a hard rejection here would break failover. `@anthropic-ai/sdk` additionally deprecates `temperature`/`top_p` (post-Opus-4.6 models accept only `1.0` / `>= 0.99`); the adapter still forwards a client-set value rather than dropping it, since the per-model rule is not knowable here. That is the one `eslint-disable` in the file — don't "fix" it by removing the params.
 - 2.2: a conversation of only `system` turns leaves Anthropic's `messages` empty and gets a 400, surfacing as `upstream_error`. Deliberate: the three `ProviderErrorKind`s describe provider outcomes, and adding a client-validation kind would widen the shared seam from task 1.1.
 - 1.1: `ProviderError` takes `(message, { provider, kind, status?, cause? })`; `status` is typed `number | undefined` rather than optional because `exactOptionalPropertyTypes` is on. Adapters (2.1–2.3) must pass only a non-secret `cause` — a provider SDK error can carry the request headers.
