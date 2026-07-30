@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { ProviderSecret } from '#src/modules/auth/types.js';
 import { ProviderError, type ChatCompletionRequest } from '../types.js';
 import {
-  createAnthropicAdapter,
+  AnthropicAdapter,
   type AnthropicClientFactory,
   type AnthropicClientOptions,
   type AnthropicMessagesClient,
@@ -119,13 +119,13 @@ function stubFactory(
 
 describe('Anthropic adapter', () => {
   it('exposes the anthropic provider name', () => {
-    const adapter = createAnthropicAdapter(CONFIG);
+    const adapter = new AnthropicAdapter(CONFIG);
     expect(adapter.name).toBe('anthropic');
   });
 
   it('builds a per-call client with the revealed key, base URL, version header, no retries, and the timeout', async () => {
     const { factory, seen } = stubFactory({ ok: stubMessage() });
-    const adapter = createAnthropicAdapter(
+    const adapter = new AnthropicAdapter(
       { baseUrl: 'https://proxy.internal/anthropic', version: '2024-10-22' },
       factory,
     );
@@ -143,7 +143,7 @@ describe('Anthropic adapter', () => {
 
   it('lifts system messages into the top-level system parameter', async () => {
     const { factory, seen } = stubFactory({ ok: stubMessage() });
-    const adapter = createAnthropicAdapter(CONFIG, factory);
+    const adapter = new AnthropicAdapter(CONFIG, factory);
 
     await adapter.complete(REQUEST, new ProviderSecret(SECRET), BASE_OPTS);
 
@@ -153,7 +153,7 @@ describe('Anthropic adapter', () => {
 
   it('joins several system messages into one system parameter, wherever they sit', async () => {
     const { factory, seen } = stubFactory({ ok: stubMessage() });
-    const adapter = createAnthropicAdapter(CONFIG, factory);
+    const adapter = new AnthropicAdapter(CONFIG, factory);
 
     await adapter.complete(
       {
@@ -181,7 +181,7 @@ describe('Anthropic adapter', () => {
 
   it('omits the system parameter when the conversation has no system message', async () => {
     const { factory, seen } = stubFactory({ ok: stubMessage() });
-    const adapter = createAnthropicAdapter(CONFIG, factory);
+    const adapter = new AnthropicAdapter(CONFIG, factory);
 
     await adapter.complete(
       {
@@ -198,7 +198,7 @@ describe('Anthropic adapter', () => {
 
   it('translates the agnostic request into a non-streaming Anthropic request', async () => {
     const { factory, seen } = stubFactory({ ok: stubMessage() });
-    const adapter = createAnthropicAdapter(CONFIG, factory);
+    const adapter = new AnthropicAdapter(CONFIG, factory);
 
     await adapter.complete(REQUEST, new ProviderSecret(SECRET), BASE_OPTS);
 
@@ -216,7 +216,7 @@ describe('Anthropic adapter', () => {
 
   it('supplies the default max tokens when the client omitted one', async () => {
     const { factory, seen } = stubFactory({ ok: stubMessage() });
-    const adapter = createAnthropicAdapter(CONFIG, factory);
+    const adapter = new AnthropicAdapter(CONFIG, factory);
 
     await adapter.complete(
       {
@@ -233,7 +233,7 @@ describe('Anthropic adapter', () => {
 
   it('clamps a temperature above the Anthropic maximum instead of failing the call', async () => {
     const { factory, seen } = stubFactory({ ok: stubMessage() });
-    const adapter = createAnthropicAdapter(CONFIG, factory);
+    const adapter = new AnthropicAdapter(CONFIG, factory);
 
     await adapter.complete(
       {
@@ -252,7 +252,7 @@ describe('Anthropic adapter', () => {
 
   it('normalizes a successful reply to the unified schema with the resolved model', async () => {
     const { factory } = stubFactory({ ok: stubMessage() });
-    const adapter = createAnthropicAdapter(CONFIG, factory);
+    const adapter = new AnthropicAdapter(CONFIG, factory);
 
     const result = await adapter.complete(
       REQUEST,
@@ -281,7 +281,7 @@ describe('Anthropic adapter', () => {
         stop_reason: 'tool_use',
       }),
     });
-    const adapter = createAnthropicAdapter(CONFIG, factory);
+    const adapter = new AnthropicAdapter(CONFIG, factory);
 
     const result = await adapter.complete(
       REQUEST,
@@ -295,7 +295,7 @@ describe('Anthropic adapter', () => {
 
   it('yields empty content for a reply carrying no text block', async () => {
     const { factory } = stubFactory({ ok: stubMessage({ content: [] }) });
-    const adapter = createAnthropicAdapter(CONFIG, factory);
+    const adapter = new AnthropicAdapter(CONFIG, factory);
 
     const result = await adapter.complete(
       REQUEST,
@@ -310,7 +310,7 @@ describe('Anthropic adapter', () => {
     const { factory } = stubFactory({
       ok: stubMessage({ usage: usage(120, 37) }),
     });
-    const adapter = createAnthropicAdapter(CONFIG, factory);
+    const adapter = new AnthropicAdapter(CONFIG, factory);
 
     const result = await adapter.complete(
       REQUEST,
@@ -327,7 +327,7 @@ describe('Anthropic adapter', () => {
 
   it('carries no provider-specific fields into the normalized response', async () => {
     const { factory } = stubFactory({ ok: stubMessage() });
-    const adapter = createAnthropicAdapter(CONFIG, factory);
+    const adapter = new AnthropicAdapter(CONFIG, factory);
 
     const result = await adapter.complete(
       REQUEST,
@@ -349,7 +349,7 @@ describe('Anthropic adapter', () => {
     const { factory } = stubFactory({
       ok: stubMessage({ stop_reason: 'max_tokens' }),
     });
-    const adapter = createAnthropicAdapter(CONFIG, factory);
+    const adapter = new AnthropicAdapter(CONFIG, factory);
 
     const result = await adapter.complete(
       REQUEST,
@@ -368,7 +368,7 @@ describe('Anthropic adapter', () => {
         content: undefined as unknown as Anthropic.Message['content'],
       }),
     });
-    const adapter = createAnthropicAdapter(CONFIG, factory);
+    const adapter = new AnthropicAdapter(CONFIG, factory);
 
     await expect(
       adapter.complete(REQUEST, new ProviderSecret(SECRET), BASE_OPTS),
@@ -387,7 +387,7 @@ describe('Anthropic adapter', () => {
       new Headers(),
     );
     const { factory } = stubFactory({ err: apiError });
-    const adapter = createAnthropicAdapter(CONFIG, factory);
+    const adapter = new AnthropicAdapter(CONFIG, factory);
 
     const error = await adapter
       .complete(REQUEST, new ProviderSecret(SECRET), BASE_OPTS)
@@ -406,7 +406,7 @@ describe('Anthropic adapter', () => {
       message: 'timed out',
     });
     const { factory } = stubFactory({ err: timeout });
-    const adapter = createAnthropicAdapter(CONFIG, factory);
+    const adapter = new AnthropicAdapter(CONFIG, factory);
 
     const error = (await adapter
       .complete(REQUEST, new ProviderSecret(SECRET), BASE_OPTS)
@@ -427,7 +427,7 @@ describe('Anthropic adapter', () => {
       new Headers({ 'x-api-key': SECRET }),
     );
     const { factory } = stubFactory({ err: apiError });
-    const adapter = createAnthropicAdapter(CONFIG, factory);
+    const adapter = new AnthropicAdapter(CONFIG, factory);
 
     const error = (await adapter
       .complete(REQUEST, new ProviderSecret(SECRET), BASE_OPTS)

@@ -1,7 +1,7 @@
 import { ProviderSecret } from '#src/modules/auth/types.js';
 import { ProviderError, type ChatCompletionRequest } from '../types.js';
 import {
-  createOllamaAdapter,
+  OllamaAdapter,
   type OllamaFetch,
   type OllamaHttpRequest,
 } from './ollama-adapter.js';
@@ -94,13 +94,13 @@ function stubFetch(
 
 describe('Ollama adapter', () => {
   it('exposes the ollama provider name', () => {
-    const adapter = createOllamaAdapter(CONFIG);
+    const adapter = new OllamaAdapter(CONFIG);
     expect(adapter.name).toBe('ollama');
   });
 
   it('posts to /api/chat with the JSON content type and the revealed key', async () => {
     const { doFetch, seen } = stubFetch({ ok: stubBody() });
-    const adapter = createOllamaAdapter(CONFIG, doFetch);
+    const adapter = new OllamaAdapter(CONFIG, doFetch);
 
     await adapter.complete(REQUEST, new ProviderSecret(SECRET), BASE_OPTS);
 
@@ -114,7 +114,7 @@ describe('Ollama adapter', () => {
 
   it('keeps a base URL that carries a path prefix or a trailing slash', async () => {
     const { doFetch, seen } = stubFetch({ ok: stubBody() });
-    const adapter = createOllamaAdapter(
+    const adapter = new OllamaAdapter(
       { baseUrl: 'https://proxy.internal/ollama/' },
       doFetch,
     );
@@ -126,7 +126,7 @@ describe('Ollama adapter', () => {
 
   it('translates the agnostic request into a non-streaming /api/chat request', async () => {
     const { doFetch, seen } = stubFetch({ ok: stubBody() });
-    const adapter = createOllamaAdapter(CONFIG, doFetch);
+    const adapter = new OllamaAdapter(CONFIG, doFetch);
 
     await adapter.complete(REQUEST, new ProviderSecret(SECRET), BASE_OPTS);
 
@@ -148,7 +148,7 @@ describe('Ollama adapter', () => {
 
   it('omits the options object when the client supplied no generation params', async () => {
     const { doFetch, seen } = stubFetch({ ok: stubBody() });
-    const adapter = createOllamaAdapter(CONFIG, doFetch);
+    const adapter = new OllamaAdapter(CONFIG, doFetch);
 
     await adapter.complete(
       {
@@ -169,7 +169,7 @@ describe('Ollama adapter', () => {
 
   it('normalizes a successful reply to the unified schema with the resolved model', async () => {
     const { doFetch } = stubFetch({ ok: stubBody() });
-    const adapter = createOllamaAdapter(CONFIG, doFetch);
+    const adapter = new OllamaAdapter(CONFIG, doFetch);
 
     const result = await adapter.complete(
       REQUEST,
@@ -188,7 +188,7 @@ describe('Ollama adapter', () => {
 
   it('supplies an id per completion, since Ollama returns none', async () => {
     const { doFetch } = stubFetch({ ok: stubBody() });
-    const adapter = createOllamaAdapter(CONFIG, doFetch);
+    const adapter = new OllamaAdapter(CONFIG, doFetch);
 
     const first = await adapter.complete(
       REQUEST,
@@ -207,7 +207,7 @@ describe('Ollama adapter', () => {
 
   it('carries no provider-specific fields into the normalized response', async () => {
     const { doFetch } = stubFetch({ ok: stubBody() });
-    const adapter = createOllamaAdapter(CONFIG, doFetch);
+    const adapter = new OllamaAdapter(CONFIG, doFetch);
 
     const result = await adapter.complete(
       REQUEST,
@@ -227,7 +227,7 @@ describe('Ollama adapter', () => {
 
   it('maps the Ollama done reason onto the closed union', async () => {
     const { doFetch } = stubFetch({ ok: stubBody({ done_reason: 'length' }) });
-    const adapter = createOllamaAdapter(CONFIG, doFetch);
+    const adapter = new OllamaAdapter(CONFIG, doFetch);
 
     const result = await adapter.complete(
       REQUEST,
@@ -240,7 +240,7 @@ describe('Ollama adapter', () => {
 
   it('falls back to other for an absent done reason', async () => {
     const { doFetch } = stubFetch({ ok: stubBody({ done_reason: undefined }) });
-    const adapter = createOllamaAdapter(CONFIG, doFetch);
+    const adapter = new OllamaAdapter(CONFIG, doFetch);
 
     const result = await adapter.complete(
       REQUEST,
@@ -255,7 +255,7 @@ describe('Ollama adapter', () => {
     const { doFetch } = stubFetch({
       ok: stubBody({ prompt_eval_count: 120, eval_count: 37 }),
     });
-    const adapter = createOllamaAdapter(CONFIG, doFetch);
+    const adapter = new OllamaAdapter(CONFIG, doFetch);
 
     const result = await adapter.complete(
       REQUEST,
@@ -274,7 +274,7 @@ describe('Ollama adapter', () => {
     const { doFetch } = stubFetch({
       ok: stubBody({ prompt_eval_count: undefined, eval_count: undefined }),
     });
-    const adapter = createOllamaAdapter(CONFIG, doFetch);
+    const adapter = new OllamaAdapter(CONFIG, doFetch);
 
     const result = await adapter.complete(
       REQUEST,
@@ -294,7 +294,7 @@ describe('Ollama adapter', () => {
       ok: JSON.stringify({ error: 'model "nope" not found' }),
       status: 404,
     });
-    const adapter = createOllamaAdapter(CONFIG, doFetch);
+    const adapter = new OllamaAdapter(CONFIG, doFetch);
 
     const error = await adapter
       .complete(REQUEST, new ProviderSecret(SECRET), BASE_OPTS)
@@ -310,7 +310,7 @@ describe('Ollama adapter', () => {
 
   it('maps a transport failure to an upstream_error ProviderError with no status', async () => {
     const { doFetch } = stubFetch({ err: new TypeError('fetch failed') });
-    const adapter = createOllamaAdapter(CONFIG, doFetch);
+    const adapter = new OllamaAdapter(CONFIG, doFetch);
 
     const error = (await adapter
       .complete(REQUEST, new ProviderSecret(SECRET), BASE_OPTS)
@@ -323,7 +323,7 @@ describe('Ollama adapter', () => {
 
   it('aborts a call that outlives the timeout and reports it as a timeout', async () => {
     const { doFetch, seen } = stubFetch({ hang: true });
-    const adapter = createOllamaAdapter(CONFIG, doFetch);
+    const adapter = new OllamaAdapter(CONFIG, doFetch);
 
     const error = (await adapter
       .complete(REQUEST, new ProviderSecret(SECRET), {
@@ -340,7 +340,7 @@ describe('Ollama adapter', () => {
 
   it('surfaces a body that is not JSON as an invalid_response error', async () => {
     const { doFetch } = stubFetch({ ok: '<html>proxy error</html>' });
-    const adapter = createOllamaAdapter(CONFIG, doFetch);
+    const adapter = new OllamaAdapter(CONFIG, doFetch);
 
     await expect(
       adapter.complete(REQUEST, new ProviderSecret(SECRET), BASE_OPTS),
@@ -353,7 +353,7 @@ describe('Ollama adapter', () => {
 
   it('surfaces a reply with no assistant message as an invalid_response error', async () => {
     const { doFetch } = stubFetch({ ok: stubBody({ message: undefined }) });
-    const adapter = createOllamaAdapter(CONFIG, doFetch);
+    const adapter = new OllamaAdapter(CONFIG, doFetch);
 
     await expect(
       adapter.complete(REQUEST, new ProviderSecret(SECRET), BASE_OPTS),
@@ -371,7 +371,7 @@ describe('Ollama adapter', () => {
       ok: JSON.stringify({ error: `invalid token ${SECRET}` }),
       status: 401,
     });
-    const adapter = createOllamaAdapter(CONFIG, doFetch);
+    const adapter = new OllamaAdapter(CONFIG, doFetch);
 
     const error = (await adapter
       .complete(REQUEST, new ProviderSecret(SECRET), BASE_OPTS)

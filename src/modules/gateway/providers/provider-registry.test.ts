@@ -1,7 +1,7 @@
 import { PROVIDER_NAMES, type ProviderName } from '#src/modules/auth/types.js';
 import type { GatewayConfig } from '../config.js';
 import {
-  createProviderRegistry,
+  DefaultProviderRegistry,
   UnsupportedProviderError,
 } from './provider-registry.js';
 
@@ -17,7 +17,7 @@ const CONFIG: GatewayConfig = {
 
 describe('provider registry', () => {
   it('resolves each supported provider to the adapter that owns it', () => {
-    const registry = createProviderRegistry(CONFIG);
+    const registry = new DefaultProviderRegistry(CONFIG);
 
     for (const provider of PROVIDER_NAMES) {
       expect(registry.select(provider).name).toBe(provider);
@@ -25,7 +25,7 @@ describe('provider registry', () => {
   });
 
   it('covers exactly the three supported providers', () => {
-    const registry = createProviderRegistry(CONFIG);
+    const registry = new DefaultProviderRegistry(CONFIG);
 
     const resolved = PROVIDER_NAMES.map((provider) => registry.select(provider).name);
 
@@ -34,7 +34,7 @@ describe('provider registry', () => {
   });
 
   it('returns the same adapter instance on every selection', () => {
-    const registry = createProviderRegistry(CONFIG);
+    const registry = new DefaultProviderRegistry(CONFIG);
 
     // Adapters are built once at registration, so a per-request selection costs
     // nothing and no adapter state can differ between two calls.
@@ -42,7 +42,7 @@ describe('provider registry', () => {
   });
 
   it('rejects an unsupported provider with an error naming it', () => {
-    const registry = createProviderRegistry(CONFIG);
+    const registry = new DefaultProviderRegistry(CONFIG);
 
     // Only reachable via a cast — which is exactly the boundary slip the runtime
     // guard exists for, since the compiler alone would not catch it.
@@ -54,7 +54,7 @@ describe('provider registry', () => {
   });
 
   it('carries the offending provider on the error', () => {
-    const registry = createProviderRegistry(CONFIG);
+    const registry = new DefaultProviderRegistry(CONFIG);
 
     const error = (() => {
       try {
@@ -70,7 +70,7 @@ describe('provider registry', () => {
   });
 
   it('rejects a prototype key that is not a provider', () => {
-    const registry = createProviderRegistry(CONFIG);
+    const registry = new DefaultProviderRegistry(CONFIG);
 
     // A plain-object lookup would resolve `constructor` or `toString` to
     // something truthy; the registry must treat them as unsupported.
@@ -82,9 +82,16 @@ describe('provider registry', () => {
   });
 
   it('exposes no way to register a fourth provider', () => {
-    const registry = createProviderRegistry(CONFIG);
+    const registry = new DefaultProviderRegistry(CONFIG);
 
-    expect(Object.keys(registry)).toEqual(['select']);
+    // No own state to swap (the adapter table is a private field), nothing can
+    // be added, and the public surface is the single lookup method.
+    expect(Object.keys(registry)).toEqual([]);
     expect(Object.isFrozen(registry)).toBe(true);
+    expect(
+      Object.getOwnPropertyNames(DefaultProviderRegistry.prototype).filter(
+        (name) => name !== 'constructor',
+      ),
+    ).toEqual(['select']);
   });
 });
