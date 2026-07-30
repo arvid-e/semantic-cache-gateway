@@ -63,7 +63,7 @@
   - _Depends: 2.1, 2.2, 2.3_
 
 - [ ] 3. Conversation context and orchestration
-- [ ] 3.1 (P) Extend and populate the shared request context
+- [x] 3.1 (P) Extend and populate the shared request context
   - Extend the shared request context with the conversation message list and the derived latest user message and last assistant message (with defined defaults), and populate provider, resolved model, request params, and the conversation context without interpreting it
   - Observable: after population the context exposes the message list plus the derived latest-user and last-assistant messages, unset downstream fields keep their defaults, and no caching or topic-shift logic runs here
   - _File: src/modules/gateway/context.ts_
@@ -102,6 +102,21 @@
   - _Depends: 4.2_
 
 ## Implementation Notes
+- 3.1: declaration merging adds *required* fields, so the design's "(no foundation edit)" could only
+  hold for the `RequestContext` interface — not for `createDefaultContext()`, which stops
+  type-checking the moment a merged field has no default (that is exactly what the foundation's
+  `DEFAULTS` literal in `context-plugin.test.ts` was built to force). The three defaults therefore
+  live in `src/platform/context/types.ts` as literals (`[]`, `null`, `null`), which needs no import
+  from the gateway module, so the foundation still depends on nothing downstream. The alternative —
+  declaring the fields optional — would have handed every reader in `dual-layer-caching` a
+  `| undefined` and broken the foundation's never-`undefined` invariant (Req 5.4).
+- 3.1: `populateCompletionContext` sets `ctx.model` to the *requested* model; task 3.2 overwrites it
+  with the model the provider reports serving (Req 2.4). It deliberately takes no credential
+  argument, so there is no way to write a secret into a context that telemetry reads.
+- 3.1: `params` records only the parameters the client actually sent, under the agnostic names
+  (`maxTokens`, never `max_tokens`/`num_predict`), and copies `stop`/`messages` rather than aliasing
+  the request body. `tokenUsage`/`latencyMs` are *not* touched here — they are unknown until the
+  provider answers (task 3.2).
 - 1.1: the normalized usage type is `NormalizedUsage` (`promptTokens`/`completionTokens`/`totalTokens`), deliberately distinct from the foundation's `TokenUsage` (`prompt`/`completion`/`total`) — task 3.2 must map between them, not assign across.
 - 1.4: `mapping.ts` owns every provider's wire vocabulary — add a new stop reason there, never to the `FinishReason` union in `types.ts`. Adapters (2.1–2.3) should call these rather than mapping inline.
 - 1.4: OpenAI's reported `total_tokens` is preserved even when it disagrees with prompt+completion; only Anthropic and Ollama get a computed total. Pinned by a test — don't "fix" it into a recomputation.

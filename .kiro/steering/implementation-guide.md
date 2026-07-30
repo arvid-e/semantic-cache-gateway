@@ -34,7 +34,10 @@ Within a spec, tasks are ordered Foundation → Core → Integration → Validat
 
 ## Verify loop (per task / per spec)
 - `docker compose up -d postgres redis ollama` — bring up backing services (from platform-foundation).
-- `npm run build` — strict type-check. `npm run lint` — style.
+- `npm run build` — strict type-check of the emitted sources. `npm run lint` — style.
+- `npm run typecheck` — same strictness but *including* the co-located tests, which
+  `tsconfig.build.json` excludes; run it before checking a box, or a type error in a test file goes
+  unnoticed (Vitest transpiles without type-checking).
 - `npm test` — unit suites. `npm run test:integration` — integration suites (need the docker services).
 - The exact script names are fixed in **platform-foundation task 1.1**; update this line if they differ.
 

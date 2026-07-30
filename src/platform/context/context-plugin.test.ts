@@ -18,6 +18,10 @@ const DEFAULTS: RequestContext = {
   latencyMs: null,
   failover: { attempted: false, from: null, to: null },
   breakerState: 'closed',
+  // Conversation-context fields, merged in by the gateway module.
+  messages: [],
+  latestUserMessage: null,
+  lastAssistantMessage: null,
 };
 
 /**
