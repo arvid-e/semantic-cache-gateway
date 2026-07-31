@@ -1,9 +1,9 @@
 import type { ProviderName } from '#src/modules/auth/types.js';
 import type { GatewayConfig } from '../config.js';
 import type { ProviderAdapter } from '../types.js';
-import { createAnthropicAdapter } from './anthropic-adapter.js';
-import { createOllamaAdapter } from './ollama-adapter.js';
-import { createOpenAiAdapter } from './openai-adapter.js';
+import { AnthropicAdapter } from './anthropic-adapter.js';
+import { OllamaAdapter } from './ollama-adapter.js';
+import { OpenAiAdapter } from './openai-adapter.js';
 
 /**
  * The provider registry for the `gateway-provider-routing` module.
@@ -17,10 +17,10 @@ import { createOpenAiAdapter } from './openai-adapter.js';
  * "Exactly three, and no others" (Req 2.3) is enforced twice over. At compile
  * time the adapter table is a complete {@link Record} over `ProviderName`, so a
  * missing provider fails to type-check and an extra one is an excess property.
- * At runtime the registry is frozen and exposes only {@link
- * ProviderRegistry.select} — there is no `register` to call — and an unknown
- * name raises {@link UnsupportedProviderError} rather than resolving to anything
- * (Req 2.2).
+ * At runtime the table is built in the constructor and kept in a private field,
+ * and the class exposes only {@link ProviderRegistry.select} — there is no
+ * `register` to call — so an unknown name raises
+ * {@link UnsupportedProviderError} rather than resolving to anything (Req 2.2).
  */
 
 /**
@@ -48,36 +48,45 @@ export interface ProviderRegistry {
 }
 
 /**
- * Build the registry, constructing every adapter from the gateway config.
+ * {@link ProviderRegistry} over the three adapters, each constructed from the
+ * gateway config.
  *
- * Called once during gateway-plugin registration, not per request: the adapters
- * are stateless and hold only deployment config — the tenant credential and the
- * per-call options arrive on each {@link ProviderAdapter.complete} call instead.
- *
- * @param config - Validated gateway config supplying each provider's settings.
+ * Instantiated once during gateway-plugin registration, not per request: the
+ * adapters are stateless and hold only deployment config — the tenant credential
+ * and the per-call options arrive on each {@link ProviderAdapter.complete} call
+ * instead.
  */
-export function createProviderRegistry(config: GatewayConfig): ProviderRegistry {
-  // A complete record over ProviderName: this literal is what makes "exactly
-  // three" a compile-time property. Adding a fourth provider to the union in
-  // auth breaks this line until an adapter for it exists.
-  const adapters: Readonly<Record<ProviderName, ProviderAdapter>> = {
-    openai: createOpenAiAdapter(config.providers.openai),
-    anthropic: createAnthropicAdapter(config.providers.anthropic),
-    ollama: createOllamaAdapter(config.providers.ollama),
-  };
+export class DefaultProviderRegistry implements ProviderRegistry {
+  /**
+   * Looked up through a Map rather than a record so an unknown name genuinely
+   * misses. A plain-object lookup would resolve inherited keys — `constructor`,
+   * `toString` — to something truthy, and the compiler cannot help here because
+   * a bad name can only arrive through a cast in the first place.
+   */
+  readonly #byName: ReadonlyMap<string, ProviderAdapter>;
 
-  // Looked up through a Map rather than the record itself so an unknown name
-  // genuinely misses. A plain-object lookup would resolve inherited keys —
-  // `constructor`, `toString` — to something truthy, and the compiler cannot
-  // help here because a bad name can only arrive through a cast in the first
-  // place.
-  const byName = new Map<string, ProviderAdapter>(Object.entries(adapters));
+  /** @param config - Validated gateway config supplying each provider's settings. */
+  constructor(config: GatewayConfig) {
+    // A complete record over ProviderName: this literal is what makes "exactly
+    // three" a compile-time property. Adding a fourth provider to the union in
+    // auth breaks this line until an adapter for it exists.
+    const adapters: Readonly<Record<ProviderName, ProviderAdapter>> = {
+      openai: new OpenAiAdapter(config.providers.openai),
+      anthropic: new AnthropicAdapter(config.providers.anthropic),
+      ollama: new OllamaAdapter(config.providers.ollama),
+    };
 
-  return Object.freeze({
-    select(provider: ProviderName): ProviderAdapter {
-      const adapter = byName.get(provider);
-      if (adapter === undefined) throw new UnsupportedProviderError(provider);
-      return adapter;
-    },
-  });
+    this.#byName = new Map<string, ProviderAdapter>(Object.entries(adapters));
+
+    // Nothing can be bolted onto the instance afterwards — no `register`
+    // property, no swapped `select` (Req 2.3). The adapter table itself is a
+    // private field, so it is out of reach either way.
+    Object.freeze(this);
+  }
+
+  select(provider: ProviderName): ProviderAdapter {
+    const adapter = this.#byName.get(provider);
+    if (adapter === undefined) throw new UnsupportedProviderError(provider);
+    return adapter;
+  }
 }

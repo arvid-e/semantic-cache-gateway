@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { ProviderSecret } from '#src/modules/auth/types.js';
+import type { ProviderName, ProviderSecret } from '#src/modules/auth/types.js';
 import {
   ProviderError,
   type ChatCompletionRequest,
@@ -94,28 +94,45 @@ interface OllamaChatResponse {
 }
 
 /**
- * Build the Ollama chat adapter.
+ * The Ollama chat adapter.
  *
- * @param config - Provider base URL (from the gateway config).
- * @param doFetch - HTTP transport; defaults to Node's global `fetch`.
+ * Holds only the resolved endpoint and the transport: the tenant credential and
+ * the per-call options arrive on each {@link OllamaAdapter.complete} call, so one
+ * instance serves every tenant and every request.
  */
-export function createOllamaAdapter(
-  config: OllamaAdapterConfig,
-  doFetch: OllamaFetch = defaultFetch,
-): ProviderAdapter {
-  const url = chatUrl(config.baseUrl);
+export class OllamaAdapter implements ProviderAdapter {
+  readonly name: ProviderName = 'ollama';
 
-  return {
-    name: 'ollama',
-    async complete(
-      request: ChatCompletionRequest,
-      credential: ProviderSecret,
-      opts: ProviderCallOptions,
-    ): Promise<NormalizedResponse> {
-      const payload = await post(doFetch, url, request, credential, opts);
-      return normalize(payload, request);
-    },
-  };
+  /** The chat endpoint, derived from the base URL once at construction. */
+  readonly #url: string;
+  readonly #doFetch: OllamaFetch;
+
+  /**
+   * @param config - Provider base URL (from the gateway config).
+   * @param doFetch - HTTP transport; defaults to Node's global `fetch`.
+   */
+  constructor(
+    config: OllamaAdapterConfig,
+    doFetch: OllamaFetch = defaultFetch,
+  ) {
+    this.#url = chatUrl(config.baseUrl);
+    this.#doFetch = doFetch;
+  }
+
+  async complete(
+    request: ChatCompletionRequest,
+    credential: ProviderSecret,
+    opts: ProviderCallOptions,
+  ): Promise<NormalizedResponse> {
+    const payload = await post(
+      this.#doFetch,
+      this.#url,
+      request,
+      credential,
+      opts,
+    );
+    return normalize(payload, request);
+  }
 }
 
 /**

@@ -2,7 +2,7 @@ import OpenAI from 'openai';
 import { ProviderSecret } from '#src/modules/auth/types.js';
 import { ProviderError, type ChatCompletionRequest } from '../types.js';
 import {
-  createOpenAiAdapter,
+  OpenAiAdapter,
   type OpenAiChatClient,
   type OpenAiClientFactory,
   type OpenAiClientOptions,
@@ -109,13 +109,13 @@ function stubFactory(
 
 describe('OpenAI adapter', () => {
   it('exposes the openai provider name', () => {
-    const adapter = createOpenAiAdapter({ baseUrl: 'https://api.openai.com/v1' });
+    const adapter = new OpenAiAdapter({ baseUrl: 'https://api.openai.com/v1' });
     expect(adapter.name).toBe('openai');
   });
 
   it('builds a per-call client with the revealed key, base URL, no retries, and the timeout', async () => {
     const { factory, seen } = stubFactory({ ok: stubCompletion() });
-    const adapter = createOpenAiAdapter(
+    const adapter = new OpenAiAdapter(
       { baseUrl: 'https://proxy.internal/openai' },
       factory,
     );
@@ -132,7 +132,7 @@ describe('OpenAI adapter', () => {
 
   it('translates the agnostic request into a non-streaming OpenAI request', async () => {
     const { factory, seen } = stubFactory({ ok: stubCompletion() });
-    const adapter = createOpenAiAdapter({ baseUrl: 'https://x' }, factory);
+    const adapter = new OpenAiAdapter({ baseUrl: 'https://x' }, factory);
 
     await adapter.complete(REQUEST, new ProviderSecret(SECRET), BASE_OPTS);
 
@@ -152,7 +152,7 @@ describe('OpenAI adapter', () => {
 
   it('omits optional params the client did not supply', async () => {
     const { factory, seen } = stubFactory({ ok: stubCompletion() });
-    const adapter = createOpenAiAdapter({ baseUrl: 'https://x' }, factory);
+    const adapter = new OpenAiAdapter({ baseUrl: 'https://x' }, factory);
 
     await adapter.complete(
       { provider: 'openai', model: 'gpt-4o', messages: [{ role: 'user', content: 'hi' }] },
@@ -169,7 +169,7 @@ describe('OpenAI adapter', () => {
 
   it('normalizes a successful reply to the unified schema with the resolved model', async () => {
     const { factory } = stubFactory({ ok: stubCompletion() });
-    const adapter = createOpenAiAdapter({ baseUrl: 'https://x' }, factory);
+    const adapter = new OpenAiAdapter({ baseUrl: 'https://x' }, factory);
 
     const result = await adapter.complete(
       REQUEST,
@@ -189,7 +189,7 @@ describe('OpenAI adapter', () => {
 
   it('carries no provider-specific fields into the normalized response', async () => {
     const { factory } = stubFactory({ ok: stubCompletion() });
-    const adapter = createOpenAiAdapter({ baseUrl: 'https://x' }, factory);
+    const adapter = new OpenAiAdapter({ baseUrl: 'https://x' }, factory);
 
     const result = await adapter.complete(
       REQUEST,
@@ -220,7 +220,7 @@ describe('OpenAI adapter', () => {
         ],
       }),
     });
-    const adapter = createOpenAiAdapter({ baseUrl: 'https://x' }, factory);
+    const adapter = new OpenAiAdapter({ baseUrl: 'https://x' }, factory);
 
     const result = await adapter.complete(
       REQUEST,
@@ -244,7 +244,7 @@ describe('OpenAI adapter', () => {
         ],
       }),
     });
-    const adapter = createOpenAiAdapter({ baseUrl: 'https://x' }, factory);
+    const adapter = new OpenAiAdapter({ baseUrl: 'https://x' }, factory);
 
     const result = await adapter.complete(
       REQUEST,
@@ -257,7 +257,7 @@ describe('OpenAI adapter', () => {
 
   it('surfaces a reply with no choices as an invalid_response error', async () => {
     const { factory } = stubFactory({ ok: stubCompletion({ choices: [] }) });
-    const adapter = createOpenAiAdapter({ baseUrl: 'https://x' }, factory);
+    const adapter = new OpenAiAdapter({ baseUrl: 'https://x' }, factory);
 
     await expect(
       adapter.complete(REQUEST, new ProviderSecret(SECRET), BASE_OPTS),
@@ -276,7 +276,7 @@ describe('OpenAI adapter', () => {
       new Headers(),
     );
     const { factory } = stubFactory({ err: apiError });
-    const adapter = createOpenAiAdapter({ baseUrl: 'https://x' }, factory);
+    const adapter = new OpenAiAdapter({ baseUrl: 'https://x' }, factory);
 
     const error = await adapter
       .complete(REQUEST, new ProviderSecret(SECRET), BASE_OPTS)
@@ -293,7 +293,7 @@ describe('OpenAI adapter', () => {
   it('maps a timeout to a timeout ProviderError with no status', async () => {
     const timeout = new OpenAI.APIConnectionTimeoutError({ message: 'timed out' });
     const { factory } = stubFactory({ err: timeout });
-    const adapter = createOpenAiAdapter({ baseUrl: 'https://x' }, factory);
+    const adapter = new OpenAiAdapter({ baseUrl: 'https://x' }, factory);
 
     const error = (await adapter
       .complete(REQUEST, new ProviderSecret(SECRET), BASE_OPTS)
@@ -314,7 +314,7 @@ describe('OpenAI adapter', () => {
       new Headers({ authorization: `Bearer ${SECRET}` }),
     );
     const { factory } = stubFactory({ err: apiError });
-    const adapter = createOpenAiAdapter({ baseUrl: 'https://x' }, factory);
+    const adapter = new OpenAiAdapter({ baseUrl: 'https://x' }, factory);
 
     const error = (await adapter
       .complete(REQUEST, new ProviderSecret(SECRET), BASE_OPTS)

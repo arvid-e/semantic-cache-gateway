@@ -88,5 +88,13 @@ export function createDefaultContext(): RequestContext {
     latencyMs: null,
     failover: { attempted: false, from: null, to: null },
     breakerState: 'closed',
+    // Conversation context. The fields are declared by
+    // `src/modules/gateway/context.ts` via declaration merging; their defaults
+    // belong here, with every other field's, because this factory is what makes
+    // "no field is ever `undefined`" true (Req 7.5). Written as literals so the
+    // foundation still imports nothing from a domain module.
+    messages: [],
+    latestUserMessage: null,
+    lastAssistantMessage: null,
   };
 }

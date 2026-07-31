@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import type { ProviderSecret } from '#src/modules/auth/types.js';
+import type { ProviderName, ProviderSecret } from '#src/modules/auth/types.js';
 import {
   ProviderError,
   type ChatCompletionRequest,
@@ -62,41 +62,55 @@ const defaultClientFactory: OpenAiClientFactory = (options) =>
   new OpenAI(options);
 
 /**
- * Build the OpenAI Chat Completions adapter.
+ * The OpenAI Chat Completions adapter.
  *
- * @param config - Provider base URL (from the gateway config).
- * @param createClient - Client factory; defaults to the real OpenAI SDK.
+ * Holds only deployment config and the client factory: the tenant credential and
+ * the per-call options arrive on each {@link OpenAiAdapter.complete} call, so one
+ * instance serves every tenant and every request.
  */
-export function createOpenAiAdapter(
-  config: OpenAiAdapterConfig,
-  createClient: OpenAiClientFactory = defaultClientFactory,
-): ProviderAdapter {
-  return {
-    name: 'openai',
-    async complete(
-      request: ChatCompletionRequest,
-      credential: ProviderSecret,
-      opts: ProviderCallOptions,
-    ): Promise<NormalizedResponse> {
-      const client = createClient({
-        // The one place the tenant secret is revealed: the HTTP boundary.
-        apiKey: credential.reveal(),
-        baseURL: config.baseUrl,
-        // Retries are owned by resilience-failover, not the adapter (Req 3.5).
-        maxRetries: 0,
-        timeout: opts.timeoutMs,
-      });
+export class OpenAiAdapter implements ProviderAdapter {
+  readonly name: ProviderName = 'openai';
 
-      let completion: OpenAI.Chat.Completions.ChatCompletion;
-      try {
-        completion = await client.chat.completions.create(toOpenAiRequest(request));
-      } catch (error) {
-        throw toProviderError(error);
-      }
+  readonly #config: OpenAiAdapterConfig;
+  readonly #createClient: OpenAiClientFactory;
 
-      return normalize(completion);
-    },
-  };
+  /**
+   * @param config - Provider base URL (from the gateway config).
+   * @param createClient - Client factory; defaults to the real OpenAI SDK.
+   */
+  constructor(
+    config: OpenAiAdapterConfig,
+    createClient: OpenAiClientFactory = defaultClientFactory,
+  ) {
+    this.#config = config;
+    this.#createClient = createClient;
+  }
+
+  async complete(
+    request: ChatCompletionRequest,
+    credential: ProviderSecret,
+    opts: ProviderCallOptions,
+  ): Promise<NormalizedResponse> {
+    const client = this.#createClient({
+      // The one place the tenant secret is revealed: the HTTP boundary.
+      apiKey: credential.reveal(),
+      baseURL: this.#config.baseUrl,
+      // Retries are owned by resilience-failover, not the adapter (Req 3.5).
+      maxRetries: 0,
+      timeout: opts.timeoutMs,
+    });
+
+    let completion: OpenAI.Chat.Completions.ChatCompletion;
+    try {
+      completion = await client.chat.completions.create(
+        toOpenAiRequest(request),
+      );
+    } catch (error) {
+      throw toProviderError(error);
+    }
+
+    return normalize(completion);
+  }
 }
 
 /**

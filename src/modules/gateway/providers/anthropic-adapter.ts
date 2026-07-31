@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import type { ProviderSecret } from '#src/modules/auth/types.js';
+import type { ProviderName, ProviderSecret } from '#src/modules/auth/types.js';
 import {
   ProviderError,
   type ChatCompletionRequest,
@@ -83,44 +83,56 @@ const defaultClientFactory: AnthropicClientFactory = (options) =>
   new Anthropic(options);
 
 /**
- * Build the Anthropic Messages adapter.
+ * The Anthropic Messages adapter.
  *
- * @param config - Provider base URL and API version (from the gateway config).
- * @param createClient - Client factory; defaults to the real Anthropic SDK.
+ * Holds only deployment config and the client factory: the tenant credential and
+ * the per-call options arrive on each {@link AnthropicAdapter.complete} call, so
+ * one instance serves every tenant and every request.
  */
-export function createAnthropicAdapter(
-  config: AnthropicAdapterConfig,
-  createClient: AnthropicClientFactory = defaultClientFactory,
-): ProviderAdapter {
-  return {
-    name: 'anthropic',
-    async complete(
-      request: ChatCompletionRequest,
-      credential: ProviderSecret,
-      opts: ProviderCallOptions,
-    ): Promise<NormalizedResponse> {
-      const client = createClient({
-        // The one place the tenant secret is revealed: the HTTP boundary.
-        apiKey: credential.reveal(),
-        baseURL: config.baseUrl,
-        // Retries are owned by resilience-failover, not the adapter (Req 3.5).
-        maxRetries: 0,
-        timeout: opts.timeoutMs,
-        // Pinned from config so a rollout can move to a newer dated release
-        // without a code change; the SDK would otherwise send its own default.
-        defaultHeaders: { 'anthropic-version': config.version },
-      });
+export class AnthropicAdapter implements ProviderAdapter {
+  readonly name: ProviderName = 'anthropic';
 
-      let message: Anthropic.Message;
-      try {
-        message = await client.messages.create(toAnthropicRequest(request, opts));
-      } catch (error) {
-        throw toProviderError(error);
-      }
+  readonly #config: AnthropicAdapterConfig;
+  readonly #createClient: AnthropicClientFactory;
 
-      return normalize(message);
-    },
-  };
+  /**
+   * @param config - Provider base URL and API version (from the gateway config).
+   * @param createClient - Client factory; defaults to the real Anthropic SDK.
+   */
+  constructor(
+    config: AnthropicAdapterConfig,
+    createClient: AnthropicClientFactory = defaultClientFactory,
+  ) {
+    this.#config = config;
+    this.#createClient = createClient;
+  }
+
+  async complete(
+    request: ChatCompletionRequest,
+    credential: ProviderSecret,
+    opts: ProviderCallOptions,
+  ): Promise<NormalizedResponse> {
+    const client = this.#createClient({
+      // The one place the tenant secret is revealed: the HTTP boundary.
+      apiKey: credential.reveal(),
+      baseURL: this.#config.baseUrl,
+      // Retries are owned by resilience-failover, not the adapter (Req 3.5).
+      maxRetries: 0,
+      timeout: opts.timeoutMs,
+      // Pinned from config so a rollout can move to a newer dated release
+      // without a code change; the SDK would otherwise send its own default.
+      defaultHeaders: { 'anthropic-version': this.#config.version },
+    });
+
+    let message: Anthropic.Message;
+    try {
+      message = await client.messages.create(toAnthropicRequest(request, opts));
+    } catch (error) {
+      throw toProviderError(error);
+    }
+
+    return normalize(message);
+  }
 }
 
 /**
