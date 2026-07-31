@@ -62,7 +62,7 @@
   - _Boundary: Provider Registry_
   - _Depends: 2.1, 2.2, 2.3_
 
-- [ ] 3. Conversation context and orchestration
+- [x] 3. Conversation context and orchestration
 - [x] 3.1 (P) Extend and populate the shared request context
   - Extend the shared request context with the conversation message list and the derived latest user message and last assistant message (with defined defaults), and populate provider, resolved model, request params, and the conversation context without interpreting it
   - Observable: after population the context exposes the message list plus the derived latest-user and last-assistant messages, unset downstream fields keep their defaults, and no caching or topic-shift logic runs here
@@ -70,7 +70,7 @@
   - _Requirements: 5.1, 5.2, 5.3, 5.4_
   - _Boundary: Context Extension_
   - _Depends: 1.1_
-- [ ] 3.2 Implement the completion orchestration service
+- [x] 3.2 Implement the completion orchestration service
   - Orchestrate a completion: resolve the tenant credential (per-request key or stored) via the auth resolver, select the adapter, populate the pre-call context, invoke the adapter, then record token usage and latency; map a missing credential to a missing-credential error without calling the provider
   - Observable: a completion resolves the BYOK key, invokes exactly one adapter, returns the normalized response with the resolved model, and records token usage and latency in the context; a missing credential yields an error and no provider call
   - _File: src/modules/gateway/completion-service.ts_
@@ -102,6 +102,34 @@
   - _Depends: 4.2_
 
 ## Implementation Notes
+- 3.2: `DefaultCompletionService` is a class, not a `create*` factory — see the class-over-factory
+  rule in `structure.md`, which this task established. Its collaborators arrive as one
+  `CompletionServiceDeps` object (four of them read badly positionally, and `now` stays optional
+  without an argument gap). Tasks 2.1–2.4 were converted to match in the same pass:
+  `OpenAiAdapter`, `AnthropicAdapter`, `OllamaAdapter`, `DefaultProviderRegistry`. Only the
+  Fastify plugins/hooks and `createDefaultContext` remain functions, because Fastify requires a
+  function value and a data factory has no behaviour to bind.
+- 2.4: the registry's "no fourth provider is registrable" guarantee survived the class conversion
+  as `Object.freeze(this)` in the constructor plus the adapter table in a `#private` field. The
+  test now asserts the instance has no own enumerable properties and that `select` is the
+  prototype's only method — `Object.keys()` on a class instance is `[]`, so the old
+  object-literal assertion would have passed vacuously.
+- 3.2: the resolver's third outcome, `decryption_failed`, gets its own
+  `CredentialResolutionError` (in `completion-service.ts`) rather than being folded into auth's
+  `MissingCredentialError` — the tenant *did* attach a key, so task 4.1 maps missing → 400 and this
+  → a safe 5xx. It is a gateway type, not auth's `DecryptionError`: nothing in the gateway attempts
+  a decrypt, and re-throwing that type would point a stack reader at a call that never happened.
+- 3.2: adapter selection runs *before* credential resolution (as in the design's flow diagram), so
+  an unsupported provider costs no datastore round-trip. Pinned by a test asserting the resolver was
+  never called.
+- 3.2: `latencyMs` is written in a `finally` around the adapter call, measured from service entry,
+  so a *failed* provider call is timed too — a timeout's duration is exactly what an investigation
+  needs. Requests rejected before the call (unsupported provider, missing credential) never reach
+  the `finally` and keep the default `null`, which therefore reads as "no provider was called"
+  (Req 5.4). `tokenUsage` is written only on success.
+- 3.2: `perRequestKey` is spread into `ResolveCredentialInput` only when present — under
+  `exactOptionalPropertyTypes` an explicit `undefined` is not an absent property, and the resolver
+  decides BYOK-vs-stored by reading that property.
 - 3.1: declaration merging adds *required* fields, so the design's "(no foundation edit)" could only
   hold for the `RequestContext` interface — not for `createDefaultContext()`, which stops
   type-checking the moment a merged field has no default (that is exactly what the foundation's
