@@ -91,7 +91,7 @@ describe('DefaultApiKeyService', () => {
     expect(
       (await service.authenticate('scg_not-a-real-key')).tenantId,
     ).toBeNull();
-    // A raw provider-style key is not a gateway key and never matches (Req 2.5).
+    // A raw provider-style key is not a gateway key and never matches.
     expect(
       (await service.authenticate('sk-openai-style-key')).tenantId,
     ).toBeNull();

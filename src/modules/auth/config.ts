@@ -1,43 +1,31 @@
 import { z } from 'zod';
 
 /**
- * Auth environment segment for the `auth-tenancy-credentials` module.
- *
- * This is a *separate* contract from the foundation's `Config`
+ * A *separate* contract from the foundation's `Config`
  * (`src/platform/config/schema.ts`): the auth module owns its own secret
- * material — the AES-256-GCM encryption keyring, the gateway-key HMAC pepper,
- * and the admin token — and validates it here with the same fail-fast,
- * secret-safe discipline as the foundation loader (Req 5.4, 6.1, 6.2).
+ * material — the AES-256-GCM keyring, the gateway-key HMAC pepper, and the admin
+ * token — and validates it here with the same fail-fast discipline.
  *
  * Every setting in this segment is sensitive, so a validation failure names the
- * offending setting but never echoes its value (Req 6.2). Downstream tasks read
- * the frozen {@link AuthConfig} rather than `process.env`: the envelope
- * encryption util consumes `encryption.keyring`/`activeKeyVersion`, the key-hash
- * util consumes `gatewayKeyPepper`, and the admin guard consumes `adminToken`.
+ * offending setting but never echoes its value.
  */
 
 /** AES-256 keys are exactly 32 bytes; the keyring rejects anything else. */
 const AES_256_KEY_BYTES = 32;
 
 /**
- * Minimum entropy for the gateway-key HMAC pepper. 32 bytes matches SHA-256's
- * block-independent security target and the key size used elsewhere; a shorter
- * pepper weakens the keyed-hash guarantee (Req 6.4, enforced upstream here).
+ * Matches SHA-256's block-independent security target and the key size used
+ * elsewhere; a shorter pepper weakens the keyed-hash guarantee.
  */
 const MIN_PEPPER_BYTES = 32;
 
 /**
- * Minimum admin-token length. The token authorizes every provisioning call
- * (Req 5.4); a trivially short value is rejected at boot rather than becoming a
- * guessable production credential.
+ * The admin token authorizes every provisioning call, so a trivially short value
+ * is rejected at boot rather than becoming a guessable production credential.
  */
 const MIN_ADMIN_TOKEN_LENGTH = 16;
 
-/**
- * Env keys owned by this segment whose values must never reach an error message
- * or log line. Every auth setting is secret material, so all of them are listed;
- * the loader reports only the key name when one is invalid (Req 6.1, 6.2).
- */
+/** Every auth setting is secret material, so all of them are listed here. */
 export const AUTH_SENSITIVE_KEYS: ReadonlySet<string> = new Set([
   'AUTH_ENCRYPTION_KEYS',
   'AUTH_ACTIVE_KEY_VERSION',
@@ -46,10 +34,8 @@ export const AUTH_SENSITIVE_KEYS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Presence/shape schema for the raw auth environment. This stage only asserts
- * that each required setting is present and non-empty (and that the active
- * version is a positive integer); the structural decoding of the keyring and
- * pepper — base64 validity, byte lengths, active-version membership — happens in
+ * Presence and shape only. Structural decoding of the keyring and pepper —
+ * base64 validity, byte lengths, active-version membership — happens in
  * {@link loadAuthConfig}, where failures can be reported without their values.
  *
  * Messages here are deliberately value-free ("is required"), because a Zod issue
@@ -70,28 +56,21 @@ const authConfigSchema = z.object({
     ),
 });
 
-/**
- * Frozen, typed auth configuration produced from a valid environment. Read-only
- * so no consumer can mutate shared key material after boot.
- */
+/** Read-only so no consumer can mutate shared key material after boot. */
 export interface AuthConfig {
   readonly encryption: {
-    /** Version whose key {@link EnvelopeEncryption} encrypts new secrets with. */
+    /** Version whose key new secrets are encrypted with. */
     readonly activeKeyVersion: number;
     /** Every usable key, indexed by `key_version`, for decrypting stored rows. */
     readonly keyring: ReadonlyMap<number, Buffer>;
   };
-  /** HMAC-SHA256 pepper for gateway-key hashing (Req 6.4). */
   readonly gatewayKeyPepper: Buffer;
-  /** Bearer token that authorizes the admin/provisioning API (Req 5.4). */
   readonly adminToken: string;
 }
 
 /**
- * Thrown when the auth environment fails validation. The message names each
- * offending setting and never contains the value of any auth setting — all of
- * which are sensitive (Req 6.2). Mirrors the foundation's `ConfigValidationError`
- * so the plugin-registration path fails the same, recognizable way.
+ * Mirrors the foundation's `ConfigValidationError` so the plugin-registration
+ * path fails the same, recognizable way.
  */
 export class AuthConfigError extends Error {
   constructor(message: string) {
@@ -100,7 +79,6 @@ export class AuthConfigError extends Error {
   }
 }
 
-/** Throw a value-free {@link AuthConfigError} listing every offending setting. */
 function fail(details: readonly string[]): never {
   throw new AuthConfigError(
     `Invalid auth configuration for: ${details.join(', ')}`,
@@ -112,7 +90,6 @@ function fail(details: readonly string[]): never {
 const BASE64_PATTERN = /^[A-Za-z0-9+/]+={0,2}$/;
 
 /**
- * Decode a base64 secret to its bytes, or `null` if it is not valid base64.
  * Returns bytes (never the input) so callers can length-check without ever
  * putting the value into an error.
  */
@@ -124,10 +101,10 @@ function decodeBase64(value: string): Buffer | null {
 }
 
 /**
- * Parse the `AUTH_ENCRYPTION_KEYS` string — a comma-separated list of
- * `version:base64key` entries — into a keyring, appending a value-free issue to
- * `issues` for each malformed entry. Versions are non-secret (`key_version` is
- * stored in plaintext), so they may appear in a message; key material may not.
+ * Parse a comma-separated list of `version:base64key` entries, appending a
+ * value-free issue for each malformed one. Versions are non-secret
+ * (`key_version` is stored in plaintext) so they may appear in a message; key
+ * material may not.
  */
 function parseKeyring(raw: string, issues: string[]): Map<number, Buffer> {
   const keyring = new Map<number, Buffer>();
@@ -180,16 +157,10 @@ function parseKeyring(raw: string, issues: string[]): Map<number, Buffer> {
 }
 
 /**
- * Parse and validate the auth environment segment into a frozen {@link AuthConfig}.
  * Call during auth-plugin registration, before the module handles any request.
+ * A missing or invalid setting throws an {@link AuthConfigError} naming the
+ * setting(s) but never printing a value.
  *
- * Validation is fail-fast and secret-safe: a missing or invalid setting throws
- * an {@link AuthConfigError} whose message names the setting(s) but never prints
- * a value (Req 5.4, 6.1, 6.2). A valid environment yields a read-only config
- * whose keyring, pepper, and admin token are ready for the crypto and admin
- * layers to consume.
- *
- * @param env - Environment to read; defaults to `process.env`.
  * @throws {AuthConfigError} when any auth setting is missing or invalid.
  */
 export function loadAuthConfig(
@@ -198,8 +169,6 @@ export function loadAuthConfig(
   const result = authConfigSchema.safeParse(env);
 
   if (!result.success) {
-    // Presence/shape failures. Report only the key name for sensitive settings
-    // (all of them are), matching the foundation loader's redaction.
     const details = result.error.issues.map((issue) => {
       const key = String(issue.path[0] ?? '(unknown)');
       return AUTH_SENSITIVE_KEYS.has(key) ? `${key} (${issue.message})` : key;

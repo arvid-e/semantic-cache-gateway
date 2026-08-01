@@ -1,37 +1,25 @@
 /**
  * The request-scoped context shared by every pipeline stage.
  *
- * This foundation defines the *shape* and its defaults only; it never populates
- * business fields. Later specs (auth, routing, caching, resilience, telemetry)
- * read and write these fields as a request moves through them, and extend the
- * shape with their own fields via TypeScript declaration merging — see the note
- * on {@link RequestContext} (Req 7.2, 7.3).
+ * The foundation defines the *shape* and its defaults only; it never populates
+ * business fields. Later specs read and write these as a request moves through
+ * them, and extend the shape with their own fields via declaration merging.
  */
 
-/**
- * How the cache treated a request. `unknown` is the pre-cache default: no stage
- * has classified the request yet. Populated by the caching spec.
- */
+/** `unknown` is the pre-cache default: no stage has classified the request yet. */
 export type CacheStatus =
   'unknown' | 'miss' | 'exact_hit' | 'semantic_hit' | 'bypassed';
 
-/**
- * Circuit-breaker state for the provider a request is routed to. `closed` is the
- * healthy default (traffic flows). Populated by the resilience spec.
- */
+/** `closed` is the healthy default (traffic flows). */
 export type BreakerState = 'closed' | 'open' | 'half_open';
 
-/** Token counts for a request, filled in once a provider response is seen. */
 export interface TokenUsage {
   prompt: number;
   completion: number;
   total: number;
 }
 
-/**
- * Whether the request was retried against a fallback provider, and between which
- * providers. `attempted` stays false until the resilience stage fails over.
- */
+/** `attempted` stays false until the resilience stage fails over. */
 export interface FailoverState {
   attempted: boolean;
   from: string | null;
@@ -39,43 +27,32 @@ export interface FailoverState {
 }
 
 /**
- * Request-scoped state carried for a request's whole lifetime and mutated in
- * place by pipeline stages. Every field has a defined default (see
- * {@link createDefaultContext}) so a handler that reads an unset field gets a
- * meaningful zero value, never `undefined` (Req 7.5).
+ * Mutated in place by pipeline stages over a request's whole lifetime. Every
+ * field has a defined default (see {@link createDefaultContext}) so a handler
+ * that reads an unset field gets a meaningful zero value, never `undefined`.
  *
  * Declared as an `interface`, not a `type`, so downstream specs can add fields
- * without editing this file (Req 7.3).
- *
+ * without editing this file.
  */
 export interface RequestContext {
   /** Resolved tenant, once auth has identified the caller. */
   tenantId: string | null;
-  /** Upstream provider selected for this request (e.g. `openai`, `ollama`). */
   provider: string | null;
-  /** Model selected for this request. */
   model: string | null;
   /** Provider request parameters (temperature, max tokens, …). */
   params: Record<string, unknown>;
-  /** How the cache handled this request. */
   cacheStatus: CacheStatus;
-  /** Token counts, filled in from the provider response. */
   tokenUsage: TokenUsage;
   /** End-to-end handling time in milliseconds, set at request completion. */
   latencyMs: number | null;
-  /** Failover bookkeeping for the resilience stage. */
   failover: FailoverState;
-  /** Circuit-breaker state for the routed provider. */
   breakerState: BreakerState;
 }
 
 /**
- * Build a fresh {@link RequestContext} with every field at its default.
- *
  * Returns a brand-new object — including new nested `params`, `tokenUsage`, and
- * `failover` objects — on every call, so that mutating one request's context can
- * never leak into another's. The context plugin calls this once per request
- * (Req 7.1, 7.5).
+ * `failover` objects — on every call, so mutating one request's context can
+ * never leak into another's.
  */
 export function createDefaultContext(): RequestContext {
   return {
@@ -88,11 +65,10 @@ export function createDefaultContext(): RequestContext {
     latencyMs: null,
     failover: { attempted: false, from: null, to: null },
     breakerState: 'closed',
-    // Conversation context. The fields are declared by
-    // `src/modules/gateway/context.ts` via declaration merging; their defaults
-    // belong here, with every other field's, because this factory is what makes
-    // "no field is ever `undefined`" true (Req 7.5). Written as literals so the
-    // foundation still imports nothing from a domain module.
+    // Declared by `src/modules/gateway/context.ts` via declaration merging;
+    // their defaults belong here with every other field's, because this factory
+    // is what makes "no field is ever `undefined`" true. Written as literals so
+    // the foundation still imports nothing from a domain module.
     messages: [],
     latestUserMessage: null,
     lastAssistantMessage: null,

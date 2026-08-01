@@ -148,7 +148,9 @@ describe('Anthropic adapter', () => {
     await adapter.complete(REQUEST, new ProviderSecret(SECRET), BASE_OPTS);
 
     expect(seen.body?.system).toBe('You are terse.');
-    expect(seen.body?.messages).toEqual([{ role: 'user', content: 'Hi there.' }]);
+    expect(seen.body?.messages).toEqual([
+      { role: 'user', content: 'Hi there.' },
+    ]);
   });
 
   it('joins several system messages into one system parameter, wherever they sit', async () => {

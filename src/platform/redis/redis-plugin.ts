@@ -4,16 +4,11 @@ import type { RedisOptions } from 'ioredis';
 import type { FastifyInstance } from 'fastify';
 import type { Config } from '../config/schema.js';
 
-/** Options accepted by {@link redisPlugin}. */
 export interface RedisPluginOptions {
   readonly config: Config;
 }
 
-/**
- * Thrown when Redis cannot back the gateway at startup. The message names Redis
- * and never echoes the connection URL, whose credentials are sensitive
- * (Req 2.3, 4.2).
- */
+/** The message names Redis and never echoes the connection URL. */
 export class RedisPluginError extends Error {
   constructor(message: string, options?: ErrorOptions) {
     super(message, options);
@@ -21,25 +16,16 @@ export class RedisPluginError extends Error {
   }
 }
 
-/**
- * Reconnect attempts allowed before startup gives up. Bounded so an unreachable
- * Redis rejects registration instead of retrying forever.
- */
 const STARTUP_CONNECT_ATTEMPTS = 3;
-
-/** Backoff between reconnect attempts, capped so a long outage stays quiet. */
 const RECONNECT_DELAY_MS = 200;
 const RECONNECT_DELAY_CAP_MS = 2000;
 
 /**
- * Establish the shared Redis client and expose it as `app.redis`.
- *
  * Registration is the startup gate: an unreachable Redis rejects here and
- * Fastify aborts the boot (Req 1.3, 4.1, 4.2, 4.4).
+ * Fastify aborts the boot.
  *
  * Unlike Postgres, a single `ioredis` connection multiplexes every command, so
- * there is no pool to size and no per-connection setup — the whole plugin is
- * connect, verify, decorate, quit.
+ * there is no pool to size and no per-connection setup.
  */
 async function redisClientPlugin(
   app: FastifyInstance,
@@ -73,8 +59,8 @@ async function redisClientPlugin(
   });
 
   try {
-    // Round-trips a real command, so this covers auth and readiness rather than
-    // just the socket opening.
+    // A real command, so this covers auth and readiness rather than just the
+    // socket opening.
     await client.ping();
   } catch (cause) {
     client.disconnect();
@@ -96,9 +82,5 @@ async function redisClientPlugin(
   });
 }
 
-/**
- * Wrapped with `fastify-plugin` so `app.redis` escapes this plugin's
- * encapsulation context and is visible to sibling plugins (health, and later
- * domain modules).
- */
+/** `fastify-plugin` so `app.redis` is visible to sibling plugins. */
 export const redisPlugin = fp(redisClientPlugin, { name: 'platform-redis' });

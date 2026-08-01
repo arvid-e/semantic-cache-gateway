@@ -36,14 +36,14 @@ describe('foundation health against dockerized Postgres + Redis', () => {
     config = loadConfig();
 
     // Bring the schema current against the real database first. This proves the
-    // migration runner works end-to-end and enables `pgvector` (Req 5.3), and it
+    // migration runner works end-to-end and enables `pgvector`, and it
     // satisfies the pg plugin's boot-time `vector`-extension assertion below.
-    // Idempotent: a no-op if the Compose gateway already migrated (Req 5.2).
+    // Idempotent: a no-op if the Compose gateway already migrated.
     await runMigrations(config, silentLogger);
 
     app = buildApp(config);
     // Datastore plugins connect here; an unreachable dependency would reject,
-    // so reaching `ready()` already proves both datastores are wired (Req 4.1).
+    // so reaching `ready()` already proves both datastores are wired.
     await app.ready();
   });
 
@@ -51,7 +51,7 @@ describe('foundation health against dockerized Postgres + Redis', () => {
     await app.close();
   });
 
-  it('returns 200 from readiness when both datastores are reachable (Req 6.2, 9.4)', async () => {
+  it('returns 200 from readiness when both datastores are reachable', async () => {
     const res = await app.inject({ method: 'GET', url: '/health/ready' });
 
     expect(res.statusCode).toBe(200);
@@ -61,14 +61,14 @@ describe('foundation health against dockerized Postgres + Redis', () => {
     });
   });
 
-  it('returns 200 from liveness independent of datastore state (Req 6.1)', async () => {
+  it('returns 200 from liveness independent of datastore state', async () => {
     const res = await app.inject({ method: 'GET', url: '/health/live' });
 
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({ status: 'ok' });
   });
 
-  it('has the vector extension present after migrations (Req 4.3, 5.3)', async () => {
+  it('has the vector extension present after migrations', async () => {
     const { rowCount } = await app.pg.query(
       "SELECT 1 FROM pg_extension WHERE extname = 'vector'",
     );
@@ -86,7 +86,7 @@ describe('foundation health against dockerized Postgres + Redis', () => {
       // retries, `ping()` rejects immediately instead of buffering — so
       // readiness observes a genuinely unreachable dependency. Booting the full
       // app this way is impossible by design: the redis plugin's startup ping
-      // would reject and abort the boot (Req 1.3), so the health plugin is wired
+      // would reject and abort the boot, so the health plugin is wired
       // directly to the real (up) Postgres pool and this dead client.
       deadRedis = new Redis({
         host: '127.0.0.1',
@@ -116,7 +116,7 @@ describe('foundation health against dockerized Postgres + Redis', () => {
       deadRedis.disconnect();
     });
 
-    it('returns 503 from readiness naming the down dependency, without secrets (Req 6.3)', async () => {
+    it('returns 503 from readiness naming the down dependency, without secrets', async () => {
       const res = await brokenApp.inject({
         method: 'GET',
         url: '/health/ready',
@@ -133,7 +133,7 @@ describe('foundation health against dockerized Postgres + Redis', () => {
       expect(res.body).not.toContain(config.postgres.url);
     });
 
-    it('keeps liveness at 200 while a datastore is down (Req 6.1)', async () => {
+    it('keeps liveness at 200 while a datastore is down', async () => {
       const res = await brokenApp.inject({
         method: 'GET',
         url: '/health/live',

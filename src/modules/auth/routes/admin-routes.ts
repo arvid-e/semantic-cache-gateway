@@ -6,18 +6,16 @@ import type { TenantService } from '../services/tenant-service.js';
 import { isProviderName } from '../types.js';
 
 /**
- * Admin / provisioning API (Req 5.1, 5.2, 5.3, 5.4, 5.5, 6.4).
- *
  * A minimal, admin-authorized surface for operators to create tenants, issue or
- * revoke gateway keys, and attach/rotate/remove provider credentials. Every
- * route in this plugin is guarded by the admin token, and the plugin is
- * *encapsulated* (not `fastify-plugin`), so the guard hook applies only to these
- * routes — the foundation's health endpoints and the gateway's own routes are
+ * revoke gateway keys, and attach/rotate/remove provider credentials.
+ *
+ * The plugin is *encapsulated* (not `fastify-plugin`), so its guard hook applies
+ * only to these routes — the health endpoints and the gateway's own routes are
  * unaffected.
  *
  * The issue-key response is the single place a plaintext gateway key ever
- * appears, exactly once at issuance (Req 5.2, 6.4); no route returns a stored
- * provider credential or previously issued key (Req 5.5).
+ * appears; no route returns a stored provider credential or a previously issued
+ * key.
  */
 export interface AdminRoutesDeps {
   readonly tenantService: TenantService;
@@ -72,7 +70,7 @@ export function createAdminRoutes(deps: AdminRoutesDeps): FastifyPluginAsync {
     // Authorize every route registered in this encapsulated plugin.
     app.addHook('onRequest', createAdminGuard(deps.adminToken));
 
-    // Create a tenant (Req 5.1).
+    // Create a tenant.
     app.post<{ Body: { name: string } }>(
       '/admin/tenants',
       {
@@ -91,7 +89,7 @@ export function createAdminRoutes(deps: AdminRoutesDeps): FastifyPluginAsync {
       },
     );
 
-    // Issue a gateway key; the plaintext is returned once, here only (Req 5.2).
+    // Issue a gateway key; the plaintext is returned once, here only.
     app.post<{ Params: { tenantId: string } }>(
       '/admin/tenants/:tenantId/keys',
       { schema: { params: tenantParams } },
@@ -109,7 +107,7 @@ export function createAdminRoutes(deps: AdminRoutesDeps): FastifyPluginAsync {
       },
     );
 
-    // Revoke a gateway key (Req 5.2).
+    // Revoke a gateway key.
     app.delete<{ Params: { tenantId: string; keyId: string } }>(
       '/admin/tenants/:tenantId/keys/:keyId',
       { schema: { params: keyParams } },
@@ -121,8 +119,8 @@ export function createAdminRoutes(deps: AdminRoutesDeps): FastifyPluginAsync {
       },
     );
 
-    // Attach or rotate a provider credential (Req 5.3). The response carries no
-    // secret material — only the provider and when it took effect (Req 5.5).
+    // Attach or rotate a provider credential. The response carries no secret
+    // material — only the provider and when it took effect.
     app.put<{
       Params: { tenantId: string; provider: string };
       Body: { apiKey: string };
@@ -158,8 +156,8 @@ export function createAdminRoutes(deps: AdminRoutesDeps): FastifyPluginAsync {
       },
     );
 
-    // Remove a provider credential (Req 5.3). Idempotent: a missing credential
-    // under an existing tenant still succeeds with 204.
+    // Remove a provider credential. Idempotent: a missing credential under an
+    // existing tenant still succeeds with 204.
     app.delete<{ Params: { tenantId: string; provider: string } }>(
       '/admin/tenants/:tenantId/credentials/:provider',
       { schema: { params: credentialParams } },

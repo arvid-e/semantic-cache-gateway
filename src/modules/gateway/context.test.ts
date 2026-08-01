@@ -40,7 +40,7 @@ describe('conversation context defaults', () => {
 
     // The fields exist on a fresh context because the foundation's factory
     // defaults them; a stage reading before population gets a zero value, not
-    // `undefined` (Req 5.4).
+    // `undefined`.
     expect(ctx.messages).toEqual([]);
     expect(ctx.latestUserMessage).toBeNull();
     expect(ctx.lastAssistantMessage).toBeNull();
@@ -87,7 +87,7 @@ describe('populateCompletionContext', () => {
   it('surfaces the full conversation in order', () => {
     const ctx = populate(conversation);
 
-    // The whole message list, not just the latest turn (Req 1.4, 5.2).
+    // The whole message list, not just the latest turn.
     expect(ctx.messages).toEqual(conversation.messages);
     expect(ctx.messages.map((message) => message.role)).toEqual([
       'system',
@@ -160,7 +160,7 @@ describe('populateCompletionContext', () => {
 
     // Population happens before the provider call and before any cache,
     // resilience, or telemetry stage runs, so their fields must be untouched
-    // (Req 5.4). Token usage and latency are set by the completion service only
+    //. Token usage and latency are set by the completion service only
     // after the provider answers.
     expect(ctx.tokenUsage).toEqual(fresh.tokenUsage);
     expect(ctx.latencyMs).toBeNull();
@@ -189,7 +189,7 @@ describe('populateCompletionContext', () => {
 
     // No deduplication, truncation, summarization, or topic-shift verdict: the
     // list is passed through verbatim and cacheStatus stays unclassified, since
-    // `dual-layer-caching` owns every such decision (Req 5.3).
+    // `dual-layer-caching` owns every such decision.
     expect(ctx.messages).toEqual(repetitive);
     expect(ctx.cacheStatus).toBe('unknown');
   });

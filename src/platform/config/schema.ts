@@ -18,7 +18,9 @@ export const configSchema = z.object({
   POSTGRES_POOL_MAX: z.coerce.number().int().positive().default(10),
   REDIS_URL: z.url(), // required — sensitive
   OLLAMA_URL: z.url(), // required
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  NODE_ENV: z
+    .enum(['development', 'test', 'production'])
+    .default('development'),
 });
 
 /** Flat, fully-typed shape produced by parsing `process.env`. */

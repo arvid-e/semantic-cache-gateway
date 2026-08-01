@@ -22,50 +22,23 @@ import type {
 } from './types.js';
 
 /**
- * Completion orchestration for the `gateway-provider-routing` module.
+ * Turns a validated, provider-agnostic request into a
+ * {@link NormalizedResponse}. It owns the *order* of the steps and nothing else:
+ * selection lives in the registry, translation and normalization in the
+ * adapters, credential resolution in `auth-tenancy-credentials`, and the context
+ * fields are written by `context.ts`.
  *
- * This is the seam the whole module folds into: one call that turns a validated,
- * provider-agnostic request into a {@link NormalizedResponse}. It owns the
- * *order* of the steps and nothing else — selection lives in the registry,
- * translation and normalization live in the adapters, credential resolution
- * lives in `auth-tenancy-credentials`, and the context fields are written by
- * `context.ts`.
- *
- * The order is deliberate (Req 2.1, 3.2, 3.3, 5.1):
- *
- * 1. **Select the adapter.** Pure and cheap, so an unsupported provider is
- *    rejected before a datastore is touched.
- * 2. **Resolve the credential.** A per-request (BYOK) key if the caller sent
- *    one, otherwise the tenant's stored credential. A `missing` resolution
- *    becomes a {@link MissingCredentialError} and the provider is never called
- *    (Req 3.3); a `decryption_failed` one becomes a
- *    {@link CredentialResolutionError} the route maps to a safe 5xx.
- * 3. **Populate the pre-call context.** Provider, model, params, and the
- *    conversation, written before the call so a stage that only runs on failure
- *    still sees what was attempted (Req 5.2).
- * 4. **Invoke exactly one adapter**, then record what the answer cost: the
- *    provider-reported model (Req 2.4), the token usage, and the latency.
- *
- * The gateway holds no provider account of its own: the only key that reaches an
- * adapter is the tenant's, wrapped in `ProviderSecret` and revealed by the
- * adapter at its HTTP boundary (Req 3.2). Nothing here reveals it, writes it to
- * the context, or logs it.
- *
- * This service performs no caching, topic-shift, or context-verification logic
- * (Req 5.3) and no retry or failover — `dual-layer-caching` wraps this object
- * and `resilience-failover` wraps the adapter call, both against the
- * {@link CompletionService} contract, so keep the signature stable.
+ * No caching, topic-shift, or context-verification logic here, and no retry or
+ * failover — `dual-layer-caching` wraps this object and `resilience-failover`
+ * wraps the adapter call, both against the {@link CompletionService} contract,
+ * so keep the signature stable.
  */
 
 /**
- * The stored credential exists but could not be made usable — the resolver
- * reported `decryption_failed` (a wrong keyring version, a tampered ciphertext).
- *
- * Distinct from {@link MissingCredentialError}: a missing credential is the
- * tenant's to fix and is a client error, whereas this is a gateway-side fault
- * that the route maps to a safe 5xx. Only the provider name is carried; the
- * ciphertext, the key version, and any key material stay behind the auth
- * module's own error (Req 4.3).
+ * The stored credential exists but could not be made usable — a wrong keyring
+ * version, a tampered ciphertext. Distinct from {@link MissingCredentialError},
+ * which is the tenant's to fix and is a client error; this is a gateway-side
+ * fault the route maps to a safe 5xx. Only the provider name is carried.
  */
 export class CredentialResolutionError extends Error {
   readonly provider: ProviderName;
@@ -77,21 +50,15 @@ export class CredentialResolutionError extends Error {
   }
 }
 
-/** One completion, as handed over by the authenticated route. */
 export interface CompletionInput {
-  /** The authenticated tenant, resolved by auth's middleware. */
   readonly tenantId: string;
-  /** The already-validated agnostic request. */
   readonly request: ChatCompletionRequest;
   /** A per-request (BYOK) provider key, when the caller supplied one. */
   readonly perRequestKey?: string;
-  /** The request-scoped context this call populates. */
   readonly ctx: RequestContext;
 }
 
 /**
- * Orchestrates a single completion.
- *
  * Implemented here by the raw provider-calling service and, in later specs, by
  * the caching and failover services that wrap it — all three satisfy this one
  * contract so the route always calls the outermost.
@@ -107,13 +74,9 @@ export interface CompletionService {
   complete(input: CompletionInput): Promise<NormalizedResponse>;
 }
 
-/** Collaborators for {@link DefaultCompletionService}. */
 export interface CompletionServiceDeps {
-  /** Resolves a provider name to its adapter (built once at registration). */
   readonly registry: ProviderRegistry;
-  /** Auth's BYOK resolver, decorated onto the app as `credentialResolver`. */
   readonly credentials: CredentialResolver;
-  /** Supplies the per-call timeout and default max-tokens handed to adapters. */
   readonly config: GatewayConfig;
   /**
    * Monotonic clock in milliseconds, for the recorded latency. Injectable so a
@@ -125,13 +88,10 @@ export interface CompletionServiceDeps {
 }
 
 /**
- * {@link CompletionService} over the provider registry and auth's BYOK resolver:
- * the innermost of the three services that will implement this contract, the one
- * that actually calls a provider.
- *
- * Constructed once at plugin registration and shared by every request — it holds
- * only collaborators and deployment settings, never per-request state, so the
- * tenant, the credential, and the context all arrive as arguments.
+ * The innermost of the three services that will implement this contract — the
+ * one that actually calls a provider. Constructed once at plugin registration
+ * and shared by every request: it holds only collaborators and deployment
+ * settings, never per-request state.
  */
 export class DefaultCompletionService implements CompletionService {
   readonly #registry: ProviderRegistry;
@@ -139,18 +99,12 @@ export class DefaultCompletionService implements CompletionService {
   readonly #now: () => number;
 
   /**
-   * Derived from the config once: these are deployment settings, identical for
-   * every request. The adapter still takes them per call, so
-   * `resilience-failover` can vary them per attempt without reconstructing
-   * anything.
+   * Derived from config once: deployment settings, identical for every request.
+   * The adapter still takes them per call so `resilience-failover` can vary them
+   * per attempt without reconstructing anything.
    */
   readonly #callOptions: ProviderCallOptions;
 
-  /**
-   * @param deps - Registry, credential resolver, gateway config, and clock.
-   * Taken as one object rather than positionally: four collaborators read badly
-   * at the call site, and it keeps `now` optional without an argument gap.
-   */
   constructor({ registry, credentials, config, now }: CompletionServiceDeps) {
     this.#registry = registry;
     this.#credentials = credentials;
@@ -170,7 +124,7 @@ export class DefaultCompletionService implements CompletionService {
     const startedAt = this.#now();
 
     // Selection first: it is pure, so an unsupported provider costs no
-    // credential lookup (Req 2.1, 2.2).
+    // credential lookup.
     const adapter = this.#registry.select(request.provider);
 
     const secret = await resolveSecret(this.#credentials, {
@@ -179,9 +133,9 @@ export class DefaultCompletionService implements CompletionService {
       perRequestKey,
     });
 
-    // Before the call, so the attempt is visible downstream even if it fails
-    // (Req 5.1, 5.2). The secret is not an argument here and cannot be written
-    // into a context that telemetry reads (Req 3.2).
+    // Before the call, so the attempt is visible downstream even if it fails.
+    // The secret is not an argument here and so cannot be written into a context
+    // that telemetry reads.
     populateCompletionContext(ctx, request);
 
     try {
@@ -192,8 +146,7 @@ export class DefaultCompletionService implements CompletionService {
       );
 
       // The model the provider reports having served, which need not be the one
-      // asked for — an alias such as `gpt-4o-mini` resolves to a dated build
-      // (Req 2.4).
+      // asked for — an alias such as `gpt-4o-mini` resolves to a dated build.
       ctx.model = response.model;
       ctx.tokenUsage = toTokenUsage(response.usage);
 
@@ -203,15 +156,14 @@ export class DefaultCompletionService implements CompletionService {
       // either way, and a failure's duration is exactly what a timeout
       // investigation needs. Requests rejected before this point never reach
       // here, so their `latencyMs` keeps the default `null` that means "no
-      // provider was called" (Req 5.4).
+      // provider was called".
       ctx.latencyMs = Math.round(this.#now() - startedAt);
     }
   }
 }
 
 /**
- * Obtain the tenant's key for this request, turning the resolver's tagged
- * outcomes into the errors the route maps (Req 3.2, 3.3).
+ * Turn the resolver's tagged outcomes into the errors the route maps.
  *
  * `perRequestKey` is spread in only when present: under
  * `exactOptionalPropertyTypes` an explicit `undefined` is not the same as an
@@ -249,14 +201,9 @@ async function resolveSecret(
 }
 
 /**
- * Map the adapter's {@link NormalizedUsage} onto the foundation's
- * {@link TokenUsage}.
- *
- * The two carry the same three counts under different names, deliberately kept
- * apart (see `types.ts`): the gateway's is the client-facing wire shape, the
- * foundation's is the context field telemetry reads. A fresh object is assigned
- * rather than the context's default one mutated, so nothing else holds a
- * reference to the counts.
+ * The two shapes carry the same three counts under different names, kept apart
+ * deliberately (see `types.ts`). A fresh object is assigned rather than the
+ * context's default one mutated, so nothing else holds a reference to the counts.
  */
 function toTokenUsage(usage: NormalizedUsage): TokenUsage {
   return {

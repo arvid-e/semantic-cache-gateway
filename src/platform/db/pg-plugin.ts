@@ -5,16 +5,14 @@ import type { ClientBase, PoolConfig } from 'pg';
 import type { FastifyInstance } from 'fastify';
 import type { Config } from '../config/schema.js';
 
-/** Options accepted by {@link pgPlugin}. */
 export interface PgPluginOptions {
   readonly config: Config;
 }
 
 /**
- * Thrown when the database cannot back the gateway: either Postgres is
- * unreachable or the `vector` extension is absent. Both abort startup — the
- * message names which of the two failed and never echoes the connection URL,
- * whose credentials are sensitive (Req 2.3, 4.2, 4.3).
+ * Postgres is unreachable, or the `vector` extension is absent. Both abort
+ * startup; the message names which of the two failed and never echoes the
+ * connection URL.
  */
 export class PostgresPluginError extends Error {
   constructor(message: string, options?: ErrorOptions) {
@@ -23,18 +21,14 @@ export class PostgresPluginError extends Error {
   }
 }
 
-/** Presence check for the extension the semantic cache depends on. */
 const VECTOR_EXTENSION_QUERY =
   "SELECT 1 FROM pg_extension WHERE extname = 'vector'";
 
 /**
- * Preflight the database on a single throwaway connection before the pool is
- * built, so the two startup failures stay distinguishable.
- *
- * The check runs on its own `Client` rather than a pooled one because the pool
- * registers vector types on every connection, and that registration fails with
- * its own low-level message when the extension is missing — which would mask
- * the actionable error below.
+ * Runs on its own throwaway `Client` rather than a pooled one, because the pool
+ * registers vector types on every connection and that registration fails with
+ * its own low-level message when the extension is missing — masking the
+ * actionable error below.
  */
 async function assertDatabaseReady(connectionString: string): Promise<void> {
   const client = new Client({ connectionString });
@@ -65,15 +59,13 @@ async function assertDatabaseReady(connectionString: string): Promise<void> {
 }
 
 /**
- * Establish the shared Postgres client and expose it as `app.pg`.
- *
  * Registration is the startup gate: an unreachable database or a missing
  * `vector` extension rejects here, and Fastify aborts the boot rather than
- * serving traffic against a database that cannot answer (Req 4.1–4.3).
+ * serving traffic against a database that cannot answer.
  *
- * Ordering note: the extension check assumes migrations have already run — the
- * baseline migration is what issues `CREATE EXTENSION`. The entrypoint runs
- * migrate before serve, so this holds in every deployed path.
+ * The extension check assumes migrations have already run — the baseline
+ * migration is what issues `CREATE EXTENSION`. The entrypoint runs migrate
+ * before serve, so this holds in every deployed path.
  */
 async function postgresPlugin(
   app: FastifyInstance,
@@ -99,8 +91,5 @@ async function postgresPlugin(
   });
 }
 
-/**
- * Wrapped with `fastify-plugin` so `app.pg` escapes this plugin's encapsulation
- * context and is visible to sibling plugins (health, and later domain modules).
- */
+/** `fastify-plugin` so `app.pg` is visible to sibling plugins. */
 export const pgPlugin = fp(postgresPlugin, { name: 'platform-postgres' });

@@ -166,7 +166,7 @@ describe('DefaultCompletionService', () => {
     const result = await service.complete({ tenantId: 't1', request, ctx });
 
     expect(result).toEqual(response);
-    // The resolved model, not the alias the client asked for (Req 2.4).
+    // The resolved model, not the alias the client asked for.
     expect(result.model).toBe('gpt-4o-mini-2024-07-18');
   });
 
@@ -211,7 +211,7 @@ describe('DefaultCompletionService', () => {
       perRequestKey: 'sk-byok-123',
     });
     // The gateway holds no provider account: the only key the adapter sees is
-    // the one the resolver returned for this tenant (Req 3.2).
+    // the one the resolver returned for this tenant.
     const [call] = adapters.openai.calls;
     expect(call?.credential).toBeInstanceOf(ProviderSecret);
     expect(call?.credential.reveal()).toBe('sk-byok-123');
@@ -250,7 +250,7 @@ describe('DefaultCompletionService', () => {
 
     await service.complete({ tenantId: 't1', request, ctx });
 
-    // Mapped onto the foundation's field names, not assigned across (Req 5.1).
+    // Mapped onto the foundation's field names, not assigned across.
     expect(ctx.tokenUsage).toEqual({ prompt: 31, completion: 9, total: 40 });
     expect(ctx.latencyMs).toBe(42);
   });
@@ -275,7 +275,7 @@ describe('DefaultCompletionService', () => {
     await service.complete({ tenantId: 't1', request, ctx });
 
     // Read as the adapter was entered: a stage that only runs on a failed call
-    // can still see what was attempted (Req 5.2).
+    // can still see what was attempted.
     const seen = adapters.openai.calls[0]?.ctxAtCall;
     expect(seen?.provider).toBe('openai');
     expect(seen?.model).toBe('gpt-4o-mini');
@@ -291,7 +291,7 @@ describe('DefaultCompletionService', () => {
 
     await service.complete({ tenantId: 't1', request, ctx });
 
-    // No caching, topic-shift, or resilience logic runs here (Req 5.3, 5.4).
+    // No caching, topic-shift, or resilience logic runs here.
     expect(ctx.cacheStatus).toBe('unknown');
     expect(ctx.failover).toEqual(fresh.failover);
     expect(ctx.breakerState).toBe('closed');
@@ -308,7 +308,7 @@ describe('DefaultCompletionService', () => {
     });
 
     // The context is logged and read by telemetry, so the secret must not be
-    // reachable from it in any form (Req 3.2, 4.3).
+    // reachable from it in any form.
     expect(JSON.stringify(ctx)).not.toContain('sk-byok-123');
   });
 });
@@ -368,7 +368,7 @@ describe('DefaultCompletionService credential failures', () => {
       service.complete({ tenantId: 't1', request, ctx }),
     ).rejects.toBeInstanceOf(UnsupportedProviderError);
 
-    // No credential lookup for a request that can never be served (Req 2.2).
+    // No credential lookup for a request that can never be served.
     expect(resolver.resolveCredential).not.toHaveBeenCalled();
     expect(ctx.provider).toBeNull();
   });

@@ -96,7 +96,7 @@ describe('FinishReason', () => {
 
   it('carries no provider-specific reason', () => {
     // The provider wire values (`end_turn`, `max_tokens`, `done`, …) are mapped
-    // by the adapters; none of them may appear in the client contract (Req 4.2).
+    // by the adapters; none of them may appear in the client contract.
     expect(FINISH_REASONS).not.toContain('end_turn');
     expect(FINISH_REASONS).not.toContain('max_tokens');
   });
@@ -155,7 +155,7 @@ describe('ProviderAdapter', () => {
 
   it('resolves to nothing but the normalized response', () => {
     // Compile-time: `complete` may resolve to nothing but NormalizedResponse,
-    // so no provider-specific shape can ride along (Req 3.1, 4.2, 4.4).
+    // so no provider-specific shape can ride along.
     type AdapterResult = Awaited<ReturnType<ProviderAdapter['complete']>>;
     const asNormalized = (result: AdapterResult): NormalizedResponse => result;
 
@@ -220,7 +220,7 @@ describe('ProviderError', () => {
     });
 
     // The declared surface is the guard: there is no slot a secret could be
-    // written into, so no call site can leak one through the error (Req 4.3).
+    // written into, so no call site can leak one through the error.
     expect(Object.keys(err).sort()).toEqual([
       'kind',
       'name',
@@ -242,7 +242,7 @@ describe('ProviderError', () => {
 
     expect(err.cause).toBe(upstream);
     // Non-enumerable, so a cause carrying upstream detail cannot ride out to the
-    // client through serialization of the error (Req 4.3).
+    // client through serialization of the error.
     expect(Object.keys(err)).not.toContain('cause');
     expect(JSON.stringify(err)).not.toContain('socket hang up');
   });

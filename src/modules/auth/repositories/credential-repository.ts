@@ -42,7 +42,7 @@ export interface CredentialKey {
   readonly provider: ProviderName;
 }
 
-/** Persistence for per-tenant, per-provider encrypted credentials (Req 3.x). */
+/** Persistence for per-tenant, per-provider encrypted credentials. */
 export interface CredentialRepository {
   /**
    * Insert or replace the credential for a `(tenant, provider)` pair. The
