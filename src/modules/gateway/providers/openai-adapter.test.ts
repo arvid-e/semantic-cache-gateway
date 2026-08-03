@@ -155,7 +155,11 @@ describe('OpenAI adapter', () => {
     const adapter = new OpenAiAdapter({ baseUrl: 'https://x' }, factory);
 
     await adapter.complete(
-      { provider: 'openai', model: 'gpt-4o', messages: [{ role: 'user', content: 'hi' }] },
+      {
+        provider: 'openai',
+        model: 'gpt-4o',
+        messages: [{ role: 'user', content: 'hi' }],
+      },
       new ProviderSecret(SECRET),
       BASE_OPTS,
     );
@@ -291,7 +295,9 @@ describe('OpenAI adapter', () => {
   });
 
   it('maps a timeout to a timeout ProviderError with no status', async () => {
-    const timeout = new OpenAI.APIConnectionTimeoutError({ message: 'timed out' });
+    const timeout = new OpenAI.APIConnectionTimeoutError({
+      message: 'timed out',
+    });
     const { factory } = stubFactory({ err: timeout });
     const adapter = new OpenAiAdapter({ baseUrl: 'https://x' }, factory);
 

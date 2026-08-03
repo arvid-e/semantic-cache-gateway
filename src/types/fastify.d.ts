@@ -4,41 +4,27 @@ import type { RequestContext } from '#src/platform/context/types.js';
 import type { Config } from '#src/platform/config/schema.js';
 
 /**
- * Central module augmentation for the shared app instance. Every platform
- * plugin that decorates Fastify declares its decoration here rather than in its
- * own file, so the full shape of `app` is readable in one place (design.md
- * `src/types/fastify.d.ts`).
+ * Every platform plugin that decorates Fastify declares its decoration here
+ * rather than in its own file, so the full shape of `app` is readable in one
+ * place.
  */
 declare module 'fastify' {
   interface FastifyRequest {
     /**
-     * Shared request-scoped context, attached fresh per request by the context
-     * plugin and mutated in place by pipeline stages. Never `undefined` once the
-     * plugin's `onRequest` hook has run (Req 7.4, 7.5). Downstream specs add
+     * Attached fresh per request by the context plugin. Downstream specs add
      * fields by declaration-merging `RequestContext`, not by editing this file.
      */
     ctx: RequestContext;
   }
 
   interface FastifyInstance {
-    /**
-     * Validated, frozen runtime configuration, decorated by `buildApp` before
-     * any plugin registers. Domain modules read settings through this rather
-     * than touching `process.env` directly (Req 8.4).
-     */
+    /** Decorated by `buildApp` before any plugin registers. */
     readonly config: Config;
 
-    /**
-     * Shared pooled Postgres client with `pgvector` types registered. Created
-     * once at startup; domain modules query through this rather than opening
-     * their own connections (Req 4.4).
-     */
+    /** Pooled Postgres client with `pgvector` types registered. */
     readonly pg: Pool;
 
-    /**
-     * Shared `ioredis` client. One connection multiplexes every command, so
-     * domain modules reuse this rather than constructing their own (Req 4.4).
-     */
+    /** One `ioredis` connection multiplexes every command. */
     readonly redis: Redis;
   }
 }

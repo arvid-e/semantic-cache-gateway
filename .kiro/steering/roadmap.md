@@ -49,16 +49,42 @@ strategy is **cheap detection first, expensive verification only when needed**:
 - **Known limitation (documented, not hidden)**: very short, low-information follow-ups ("yes",
   "ok") embed ambiguously regardless of technique — an inherent hard case (even MeanCache reports
   non-zero false hits). Goal: measurably better than the naive alternatives, with instrumentation
-  (in `telemetry-analytics`) to prove it — not a perfect classifier.
+  to prove it — not a perfect classifier. The proving instrumentation is the **benchmark harness**
+  (see Scope Reduction below), not `telemetry-analytics`.
+
+## Scope Reduction (2026-08-01)
+The one-month deadline does not fit the original seven specs. Three are **deferred**, deliberately
+and in advance, rather than discovered half-built on the last day.
+
+- **Deferred**: `resilience-failover`, `rate-limiting`, `telemetry-analytics`.
+- **Why these three**: they are competent but commodity — a circuit breaker, a Redis token bucket,
+  a Prometheus pipeline. A reviewer skims them. The one claim in this project that is *not*
+  commodity is the context-aware semantic cache and its false-hit rate, and that lives entirely in
+  `dual-layer-caching`. Spending the remaining days on the differentiated claim beats spending them
+  on three specs that make the repo longer rather than better.
+- **Why `telemetry-analytics` specifically**: the false-hit measurement needs a labelled test set
+  and a pass/fail tally — a **benchmark harness**, not a metrics pipeline. `dual-layer-caching`
+  task 1.3 already records exactly one cache status and one outcome per request, which is the whole
+  measurement. Prometheus, Grafana-as-code, the pricing table, and the cost estimator serve a
+  dashboard that no reviewer opens.
+- **Seams are preserved, not removed.** `CompletionService` is the wrapping seam both deferred
+  runtime specs plug into: `resilience-failover` wraps the adapter call, `rate-limiting` sits in
+  front of the route. Neither needs a change to shipped code. The specs stay in `.kiro/specs/`
+  fully written so the deferral is legible as a decision.
+- **README obligation**: the deferrals are documented with the interface seam each would plug
+  into. "Circuit breaker deliberately deferred; here is where it attaches" reads as judgment. An
+  unexplained gap does not.
 
 ## Scope
 - **In**: unified provider-agnostic chat endpoint; OpenAI/Anthropic/Ollama routing; BYOK
   (per-request header or stored encrypted per-tenant credentials); response normalization;
   dual-layer cache (exact Redis + semantic `pgvector`) with per-tenant isolation and
-  configurable similarity threshold; retries to a secondary provider; per-provider/per-tenant
-  circuit breaker; per-request telemetry with estimated cost saved; Prometheus metrics +
-  Grafana dashboards; gateway API-key auth mapped to tenants; encrypted credential storage;
-  a minimal admin/provisioning API; Redis token-bucket per-tenant rate limiting; Docker Compose.
+  configurable similarity threshold; gateway API-key auth mapped to tenants; encrypted credential
+  storage; a minimal admin/provisioning API; a benchmark harness measuring hit rate, false-hit
+  rate, and tokens saved against a naive semantic cache; Docker Compose.
+- **Deferred** (specs written, not implemented — see Scope Reduction): retries to a secondary
+  provider; per-provider/per-tenant circuit breaker; per-request telemetry with estimated cost
+  saved; Prometheus metrics + Grafana dashboards; Redis token-bucket per-tenant rate limiting.
 - **Out**: streaming/SSE (stretch); dynamic weighted routing (stretch); Admin UI (stretch);
   a 4th provider; agent orchestration; gateway-side billing/invoicing/Stripe; a polished
   client UI (a Postman collection + `curl` examples in the README suffice).

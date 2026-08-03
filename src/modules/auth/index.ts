@@ -20,42 +20,26 @@ import { DefaultTenantService } from './services/tenant-service.js';
 import { createAdminRoutes } from './routes/admin-routes.js';
 
 /**
- * Auth module: composes the layered auth stack onto the foundation app and
- * exposes the seams downstream specs consume (Req 6.1, 6.3).
+ * Composes the layered auth stack onto the foundation app and exposes two seams
+ * downstream specs consume: `app.credentialResolver` (the BYOK resolver
+ * `gateway-provider-routing` calls) and `app.authenticate` (the gateway API-key
+ * hook a protected route applies).
  *
- * Wiring order mirrors the module's layers: auth config → crypto → repositories
- * (over `app.pg`) → services → resolver, then the middleware and admin routes.
- * Two seams are decorated onto the app (and hoisted to the root by
- * `fastify-plugin`) for later specs:
- *
- * - `app.credentialResolver` — the BYOK resolver `gateway-provider-routing`
- *   calls to obtain a provider key for a request.
- * - `app.authenticate` — the gateway API-key hook a protected route applies.
- *
- * The admin routes are registered through their own (encapsulated) plugin, so
- * the admin-token guard is scoped to `/admin/*` and never touches the
- * foundation's health endpoints, which stay unauthenticated.
- *
- * Secret-safety: no secret is decorated onto the request context or logged. The
- * pepper and keyring live only inside the crypto instances; resolved provider
- * secrets are wrapped in `ProviderSecret`; and the shared logger's redaction
- * policy covers the auth secret field shapes (authorization, apiKey,
- * credentials, encryption material).
+ * The admin routes are registered through their own encapsulated plugin, so the
+ * admin-token guard is scoped to `/admin/*` and never touches the foundation's
+ * health endpoints.
  */
 
-// This module owns these decorations; declare them here rather than in the
+// This module owns these decorations; declared here rather than in the
 // foundation's fastify.d.ts, so the augmentation ships with the code that adds
 // the decoration.
 declare module 'fastify' {
   interface FastifyInstance {
-    /** BYOK credential-resolution seam consumed by gateway-provider-routing. */
     readonly credentialResolver: CredentialResolver;
-    /** Gateway API-key authentication hook for protected downstream routes. */
     readonly authenticate: AuthenticateHook;
   }
 }
 
-/** Options for {@link authPlugin}: the validated auth config to wire over. */
 export interface AuthPluginOptions {
   readonly authConfig: AuthConfig;
 }
@@ -79,11 +63,10 @@ async function authModule(
   const credentialService = new DefaultCredentialService(envelope, credentials);
   const credentialResolver = new DefaultCredentialResolver(credentialService);
 
-  // Expose the downstream seams.
   app.decorate('credentialResolver', credentialResolver);
   app.decorate('authenticate', createAuthenticateHook(apiKeyService));
 
-  // Admin provisioning API — encapsulated so its guard covers only /admin/*.
+  // Encapsulated so its guard covers only /admin/*.
   await app.register(
     createAdminRoutes({
       tenantService,
@@ -95,9 +78,8 @@ async function authModule(
 }
 
 /**
- * The auth module as a `fastify-plugin`, so its decorations escape the plugin's
- * encapsulation and are visible to sibling and downstream plugins. Register it
- * after the Postgres plugin so `app.pg` is available when the repositories are
- * built.
+ * `fastify-plugin` so the decorations are visible to sibling and downstream
+ * plugins. Register after the Postgres plugin, so `app.pg` is available when the
+ * repositories are built.
  */
 export const authPlugin = fp(authModule, { name: 'auth' });

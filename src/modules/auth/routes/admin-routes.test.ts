@@ -216,7 +216,7 @@ describe('admin routes', () => {
     const body = res.json<{ provider: string; updatedAt: string }>();
     expect(body.provider).toBe('openai');
     expect(typeof body.updatedAt).toBe('string');
-    // The stored secret is never echoed back (Req 5.5).
+    // The stored secret is never echoed back.
     expect(res.body).not.toContain(PROVIDER_KEY);
     expect(attachOrRotate).toHaveBeenCalledWith(
       TENANT_ID,

@@ -144,7 +144,7 @@ describe('completions request schema', () => {
         ...validBody(),
         stop: ['a', 'b', 'c', 'd', 'e'],
       },
-      // v1 returns a single complete response (Req 3.5). Asking for a stream
+      // v1 returns a single complete response. Asking for a stream
       // must fail loudly rather than quietly returning a non-streamed reply.
       'a request for streaming': { ...validBody(), stream: true },
     };
@@ -251,7 +251,7 @@ describe('normalized response schema', () => {
 
   it('strips provider-specific fields an adapter might leak', async () => {
     // Serialization against the response schema is the last line of defence for
-    // Req 4.2: even a leaky adapter cannot widen the client contract.
+    // Even a leaky adapter cannot widen the client contract.
     const { app } = buildHarness({
       ...NORMALIZED,
       system_fingerprint: 'fp_44709d6fcb',

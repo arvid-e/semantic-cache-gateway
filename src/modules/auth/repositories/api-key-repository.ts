@@ -32,7 +32,7 @@ export interface InsertApiKeyParams {
   readonly keyPrefix: string;
 }
 
-/** Persistence for gateway API keys, stored only as keyed hashes (Req 2.4). */
+/** Persistence for gateway API keys, stored only as keyed hashes. */
 export interface ApiKeyRepository {
   /** Store a new key's hash and prefix; returns the persisted row. */
   insert(params: InsertApiKeyParams): Promise<GatewayApiKey>;

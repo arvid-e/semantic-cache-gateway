@@ -3,7 +3,7 @@ import type { AuthConfig } from '../config.js';
 import { DecryptionError } from '../types.js';
 
 /**
- * Envelope encryption for provider credentials at rest (Req 3.1, 3.4, 3.5, 6.2).
+ * Envelope encryption for provider credentials at rest.
  *
  * Secrets are sealed with AES-256-GCM under a *versioned* keyring: each
  * encryption uses the active key and a fresh 12-byte nonce, and stores the
@@ -13,7 +13,7 @@ import { DecryptionError } from '../types.js';
  * ciphertext, nonce, or tag fails authentication and is rejected.
  *
  * Every failure path raises a {@link DecryptionError} whose message carries no
- * ciphertext or key material — only the non-secret `key_version` (Req 3.5, 6.2).
+ * ciphertext or key material — only the non-secret `key_version`.
  */
 
 /** AES-256-GCM: a 256-bit key with an authenticated 96-bit nonce. */

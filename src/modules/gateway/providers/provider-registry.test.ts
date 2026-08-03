@@ -27,7 +27,9 @@ describe('provider registry', () => {
   it('covers exactly the three supported providers', () => {
     const registry = new DefaultProviderRegistry(CONFIG);
 
-    const resolved = PROVIDER_NAMES.map((provider) => registry.select(provider).name);
+    const resolved = PROVIDER_NAMES.map(
+      (provider) => registry.select(provider).name,
+    );
 
     expect(resolved).toEqual(['openai', 'anthropic', 'ollama']);
     expect(PROVIDER_NAMES).toHaveLength(3);

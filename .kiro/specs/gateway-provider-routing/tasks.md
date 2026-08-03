@@ -78,23 +78,23 @@
   - _Boundary: CompletionService_
   - _Depends: 2.4, 3.1_
 
-- [ ] 4. Integration: endpoint and plugin wiring
-- [ ] 4.1 Implement the completions endpoint under authentication
+- [x] 4. Integration: endpoint and plugin wiring
+- [x] 4.1 Implement the completions endpoint under authentication
   - Add the `POST /v1/chat/completions` handler behind the auth middleware: validate the payload, pass any per-request provider key to the service, delegate to the completion service, and map provider errors/timeouts to a normalized error response that carries no credential
   - Observable: an authenticated valid request returns the normalized response, an invalid payload returns a client error with no provider call, a provider failure returns a normalized error without the credential, and an unauthenticated request is rejected
   - _File: src/modules/gateway/routes/completions-route.ts_
   - _Requirements: 1.1, 1.3, 4.3_
   - _Boundary: Completions Route_
   - _Depends: 1.3, 3.2_
-- [ ] 4.2 Register the gateway plugin and expose downstream seams
+- [x] 4.2 Register the gateway plugin and expose downstream seams
   - Register the gateway module onto the foundation app after the auth plugin, expose the completion service and adapter interface for downstream specs, and document the gateway environment variables
   - Observable: the app boots with the completion endpoint registered behind authentication and the completion service exposed for downstream wrapping, while the foundation health endpoints remain unaffected
   - _File: src/modules/gateway/index.ts, src/app.ts_
   - _Requirements: 1.1_
   - _Depends: 4.1_
 
-- [ ] 5. Validation: routing integration tests
-- [ ] 5.1 Add integration tests for the completion flow
+- [x] 5. Validation: routing integration tests
+- [x] 5.1 Add integration tests for the completion flow
   - Exercise end-to-end flows against stubbed provider endpoints (and the Compose Ollama service): an authenticated request selects the provider, uses the BYOK key, and returns a normalized response with the resolved model and token usage; each of the three providers routes to its adapter; an unsupported provider and a missing credential are rejected without a provider call; and no provider-specific field leaks into the normalized response
   - Observable: the integration suite passes, proving provider selection, BYOK invocation, normalized responses across providers, missing-credential and unsupported-provider rejection, and absence of provider-specific leakage
   - _File: src/modules/gateway/gateway.integration.test.ts_
@@ -162,3 +162,61 @@
 - 2.2: `temperature` is *clamped* to Anthropic's max of 1, not rejected — resilience-failover retries the same agnostic request against a different provider, so a hard rejection here would break failover. `@anthropic-ai/sdk` additionally deprecates `temperature`/`top_p` (post-Opus-4.6 models accept only `1.0` / `>= 0.99`); the adapter still forwards a client-set value rather than dropping it, since the per-model rule is not knowable here. That is the one `eslint-disable` in the file — don't "fix" it by removing the params.
 - 2.2: a conversation of only `system` turns leaves Anthropic's `messages` empty and gets a 400, surfacing as `upstream_error`. Deliberate: the three `ProviderErrorKind`s describe provider outcomes, and adding a client-validation kind would widen the shared seam from task 1.1.
 - 1.1: `ProviderError` takes `(message, { provider, kind, status?, cause? })`; `status` is typed `number | undefined` rather than optional because `exactOptionalPropertyTypes` is on. Adapters (2.1–2.3) must pass only a non-secret `cause` — a provider SDK error can carry the request headers.
+- 4.1: the BYOK header is `x-provider-key` — a name the spec never pinned. It is deliberately not
+  `Authorization`, which already carries the *gateway* key; one header cannot hold two credentials
+  with different audiences. Task 4.2 must document it in `.env.example`/README alongside the five
+  gateway vars.
+- 4.1: a duplicated `x-provider-key` is a 400, not a first-wins. Node joins repeated headers into a
+  single comma-separated string rather than the `string[]` the type admits (only `set-cookie` stays
+  an array), so the check is `header.includes(',')` — the `Array.isArray` branch alone never fires.
+  Found by a test that asserted 400 and got 200. Safe because none of the three providers issue keys
+  containing a comma.
+- 4.1: `CredentialResolutionError` maps to 500, not a 4xx. The tenant's stored key exists but cannot
+  be decrypted — a gateway-side fault the caller cannot correct, so blaming them with a 4xx would be
+  wrong. `MissingCredentialError` and `UnsupportedProviderError` are 400s because they *are* the
+  caller's to fix.
+- 4.1: an error the route does not recognize is rethrown rather than swallowed into a generic 500,
+  so Fastify's handler logs it. Mapping every throwable to a tidy response would hide real faults.
+- 4.1: `perRequestKey` is spread in only when present (`exactOptionalPropertyTypes`), mirroring
+  `completion-service.ts` — the resolver's "was a BYOK key supplied?" test reads the property, so an
+  explicit `undefined` is not the same as an absent one. A blank/whitespace header is treated as
+  absent, not as an empty key.
+- 4.2: the route is bound to a *forwarder*, not to a service instance, so the service it calls is
+  resolved per request. `dual-layer-caching` (3.4) and `resilience-failover` install their wrappers
+  via `app.useCompletionService(...)` from `src/app.ts` — the composition point the
+  implementation-guide puts there — so neither has to edit this module or the route file. Fastify
+  forbids re-decorating, which is why the seam is a setter rather than a replaced decoration.
+- 4.2: two decorations, and they are not the same thing. `app.completionService` is the *raw*
+  provider-calling service and stays innermost forever — that is what a wrapper wraps.
+  `useCompletionService` installs the outermost. A wrapper that read back its own installed value
+  would build an infinite loop.
+- 4.2: `fp(..., { dependencies: ['auth'] })` makes the ordering requirement enforced rather than
+  conventional — registering the gateway before auth now fails at `ready()` instead of crashing on
+  the first request with a missing `credentialResolver`. Pinned by a test.
+- 4.2: the plugin loads its own config from `app.config` + `process.env` rather than taking it from
+  the bootstrap the way auth does. Deliberate: every gateway setting has a code-owned default, so
+  there is nothing for the bootstrap to fail fast on — only an *invalid* value fails, and that fails
+  registration. `gatewayConfig` in the options exists so tests can skip the environment entirely.
+- 4.2: gateway registration is inside the `authConfig !== undefined` branch in `src/app.ts`. The
+  gateway cannot boot without auth's decorations, so a foundation-only app (what `app.test.ts`
+  builds) gets neither.
+- 4.2: the five gateway vars are documented in `.env.example` with an explicit note that no provider
+  API key belongs there — keys are per tenant (BYOK). `docker-compose.yml` is deliberately not
+  touched: all five are optional with correct defaults, so adding them would be noise.
+- 5.1: all three providers are stubbed on one local HTTP server rather than dialing the Compose
+  Ollama the task text mentions. That service is a bare `ollama/ollama` image with an empty volume —
+  the project never pulls a *chat* model (Ollama is provisioned for `nomic-embed-text` embeddings,
+  which `dual-layer-caching` needs). Asserting routing against a model the compose file does not
+  provision would be a flake, not a proof. Each provider is mounted at its own path prefix, so the
+  recorded request path is what proves which adapter ran.
+- 5.1: the stub echoes the credential in its 500 body, deliberately, so the "no credential in a
+  normalized error" assertion has something real to catch. Don't tidy that away.
+- 5.1: BYOK precedence is proven in both directions — a per-request header beats the stored
+  credential, *and* a follow-up without the header still uses the stored one, which is what shows
+  the per-request key was never persisted.
+- 5.1: the leak test asserts the exact key set of the response body rather than the absence of one
+  named field, so a future provider-specific field fails the test without anyone remembering to add
+  an assertion for it.
+- 5.1: `npm run test:integration` needs `POSTGRES_URL`/`REDIS_URL`/`OLLAMA_URL` exported — `.env`
+  exists but is empty and nothing loads it into `process.env`. See the note in the repo README/setup
+  before running the suite.

@@ -6,10 +6,9 @@ import { REDACTION_CENSOR } from '../logger/logger-options.js';
 import type { Config } from '../config/schema.js';
 
 /**
- * A migration this run applied. Declared here rather than imported:
- * node-pg-migrate types its return value but does not export that type from the
- * package entry, and callers should depend on the foundation's contract instead
- * of a library internal that a minor release could rename.
+ * Declared here rather than imported: node-pg-migrate types its return value but
+ * does not export that type from the package entry, and callers should depend on
+ * this contract instead of a library internal a minor release could rename.
  */
 export interface AppliedMigration {
   readonly name: string;
@@ -18,9 +17,8 @@ export interface AppliedMigration {
 }
 
 /**
- * Thrown when a migration run does not complete. The message names the failing
- * migration when one was reached, and never echoes the connection URL, whose
- * credentials are sensitive (Req 2.3, 5.4).
+ * The message names the failing migration when one was reached, and never echoes
+ * the connection URL.
  */
 export class MigrationError extends Error {
   /** Name of the migration that failed, or `undefined` if none started. */
@@ -38,23 +36,18 @@ export class MigrationError extends Error {
 }
 
 /**
- * Table recording which migrations have already run. It lives in the same
- * database as the schema it describes, so "what state is this database in" is
- * answerable from the database alone rather than from deploy history.
- *
- * Changing this name orphans every existing record and would re-apply the whole
- * history against a live database — it is part of the runner's public contract.
+ * Lives in the same database as the schema it describes, so "what state is this
+ * database in" is answerable from the database alone rather than from deploy
+ * history. Changing this name orphans every existing record and would re-apply
+ * the whole history against a live database.
  */
 export const MIGRATIONS_TABLE = 'pgmigrations';
 
 /**
- * Absolute path to the migration directory, resolved from this module rather
- * than from `process.cwd()` (node-pg-migrate's default), so the runner behaves
- * the same whether it is invoked from the repo root, from a test, or from the
- * container's workdir.
- *
- * `dist/` mirrors `src/`, so the same three levels reach the repo root from both
- * `src/platform/db/migrate.ts` and the compiled `dist/platform/db/migrate.js`.
+ * Resolved from this module rather than from `process.cwd()` (node-pg-migrate's
+ * default), so the runner behaves the same whether invoked from the repo root,
+ * a test, or the container's workdir. `dist/` mirrors `src/`, so the same three
+ * levels reach the repo root from both the source and the compiled file.
  */
 export const MIGRATIONS_DIR = fileURLToPath(
   new URL('../../../migrations', import.meta.url),
@@ -69,10 +62,9 @@ export const MIGRATIONS_DIR = fileURLToPath(
 const MIGRATION_START_PATTERN = /^### MIGRATION (.+) \((?:UP|DOWN)\) ###$/;
 
 /**
- * Minimal logging surface the runner needs. Matches node-pg-migrate's `Logger`
- * and is satisfied by both `console` and a Pino instance, so callers can pass
- * whichever they have — migrations run before the app (and therefore before
- * `app.log`) exists.
+ * Matches node-pg-migrate's `Logger` and is satisfied by both `console` and a
+ * Pino instance — migrations run before the app, and therefore before
+ * `app.log`, exists.
  */
 export interface MigrationLogger {
   info: (msg: string) => void;
@@ -81,14 +73,11 @@ export interface MigrationLogger {
 }
 
 /**
- * Strip the Postgres URL — and the password inside it — out of a message before
- * it is attached to a thrown error.
- *
  * `pg-plugin.ts` can rely on `pg` never echoing the connection string, but the
  * migration runner surfaces errors from a third-party library whose message
  * shapes are not part of its API. Scrubbing at the boundary makes the
  * secret-safety guarantee structural rather than a bet on someone else's
- * formatting (Req 2.3).
+ * formatting.
  */
 function withoutConnectionSecrets(detail: string, url: string): string {
   let safe = detail.replaceAll(url, REDACTION_CENSOR);
@@ -110,18 +99,13 @@ function withoutConnectionSecrets(detail: string, url: string): string {
  *
  * Ordering is deterministic because migration filenames are prefixed with the
  * millisecond timestamp of their creation, and the recorded set in
- * {@link MIGRATIONS_TABLE} is what makes the run idempotent: already-applied
- * files are skipped, so a repeat run against an up-to-date database changes
- * nothing (Req 5.1, 5.2).
+ * {@link MIGRATIONS_TABLE} is what makes the run idempotent.
  *
- * Failure is all-or-nothing. node-pg-migrate wraps the batch in one transaction
+ * Failure is all-or-nothing: node-pg-migrate wraps the batch in one transaction
  * and writes each tracking row in that same transaction, so a failing statement
- * rolls back both the schema change and its record — the database is never left
- * claiming a half-applied migration, and a re-run resumes cleanly (Req 5.4).
+ * rolls back both the schema change and its record. The database is never left
+ * claiming a half-applied migration.
  *
- * @param config - Validated runtime config; supplies the Postgres URL.
- * @param logger - Where the run reports progress. Defaults to `console` for the
- * CLI path.
  * @returns The migrations applied by this run; empty when already up to date.
  * @throws {MigrationError} when a migration fails. `migration` names the file.
  */
@@ -186,11 +170,8 @@ export async function runMigrations(
 
 /**
  * CLI entry for `npm run migrate`, active only when this module is the process
- * entrypoint — importing it (from the server bootstrap or a test) runs nothing.
- *
- * Only the `up` direction is wired: rolling the schema forward is the operation
- * the service and its container entrypoint need, and an unattended `down`
- * against a real database is a footgun rather than a feature.
+ * entrypoint — importing it runs nothing. Only `up` is wired: an unattended
+ * `down` against a real database is a footgun rather than a feature.
  */
 const invokedAsScript =
   process.argv[1] !== undefined &&
