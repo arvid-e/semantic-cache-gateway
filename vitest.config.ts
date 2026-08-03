@@ -29,6 +29,9 @@ export default defineConfig({
         test: {
           name: 'integration',
           include: ['src/**/*.integration.test.ts'],
+          // Loads `.env` into `process.env` for the config loader. Unit tests
+          // deliberately don't get it — see vitest.setup.ts.
+          setupFiles: ['./vitest.setup.ts'],
           // Integration files share one database and each brings the schema
           // current in `beforeAll`. Run them one at a time so their migration
           // runs don't race for node-pg-migrate's advisory lock (which is set
