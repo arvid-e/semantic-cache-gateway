@@ -8,20 +8,23 @@ import { contextPlugin } from '#src/platform/context/context-plugin.js';
 import { healthPlugin } from '#src/platform/health/health-plugin.js';
 import { authPlugin } from '#src/modules/auth/index.js';
 import type { AuthConfig } from '#src/modules/auth/config.js';
+import { gatewayPlugin } from '#src/modules/gateway/index.js';
 
 /**
- * The one place the foundation's cross-cutting plugins are composed. Later specs
- * call `app.register(...)` with their own plugins on the returned instance and
- * never edit this file — the plugin host is the seam.
+ * Where the plugins are composed, and the composition point for the completion
+ * flow: the gateway exposes `app.useCompletionService`, through which later
+ * specs install their wrappers here, innermost-last —
+ *
+ *     route -> CachedCompletionService -> ResilientCompletionService -> CompletionService
  *
  * Construction is synchronous: `register` only queues each plugin, and the
  * datastore plugins connect during `app.ready()`. Returning the not-yet-ready
- * instance keeps the ordering decision in the entrypoint, which awaits `ready()`
- * before `listen()` so the service never binds a port half-initialized.
+ * instance keeps that ordering decision in the entrypoint, which awaits
+ * `ready()` before `listen()` so the service never binds a port
+ * half-initialized.
  *
- * `authConfig` opts the auth module in. The production bootstrap always supplies
- * it; tests that exercise only the foundation omit it. Its own (separate)
- * validated config is loaded by the bootstrap, not from `app.config`.
+ * `authConfig` opts the domain modules in — tests that exercise only the
+ * foundation omit it.
  */
 export function buildApp(
   config: Config,
@@ -42,11 +45,12 @@ export function buildApp(
   app.register(contextPlugin);
   app.register(healthPlugin);
 
-  // Auth registers last, after `app.pg` and the request context it depends on;
-  // its guard is scoped to the admin routes, so the health endpoints above stay
-  // unauthenticated.
+  // Auth first — it needs `app.pg` and the request context — then the gateway,
+  // which reads auth's `credentialResolver` and `authenticate`. Both scope their
+  // guards to their own routes, so health stays unauthenticated.
   if (authConfig !== undefined) {
     app.register(authPlugin, { authConfig });
+    app.register(gatewayPlugin, {});
   }
 
   return app;
