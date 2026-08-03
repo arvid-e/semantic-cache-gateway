@@ -1,5 +1,12 @@
 # Implementation Plan
 
+> [!IMPORTANT]
+> **DEFERRED 2026-08-01 — not part of the one-month scope. Do not implement.**
+> Descoped because it is a commodity capability (retry + circuit breaker); the differentiated work is `dual-layer-caching`.
+> **Seam it plugs into:** Wraps `ProviderAdapter.complete` and satisfies the `CompletionService` contract. The adapters already set `maxRetries: 0` and take `ProviderCallOptions` per call, so timeouts can vary per attempt. Requires no change to shipped code.
+> The spec is left complete and implementable so the deferral is legible as a decision
+> rather than a gap. See `.kiro/steering/roadmap.md` § Scope Reduction (2026-08-01).
+
 > **Solo implementation note:** Work top-to-bottom; ignore `(P)` markers. Open `design.md`
 > (File Structure Plan + Components + the breaker state diagram) for the concrete interfaces, make
 > the observable bullet true, then run the checks. This service reuses the gateway `CompletionService`

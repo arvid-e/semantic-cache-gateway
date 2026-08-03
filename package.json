@@ -22,6 +22,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "start": "node ./dist/index.js",
     "migrate": "npm run build && node ./dist/platform/db/migrate.js",
     "dev": "tsc && node ./dist/index.js",
@@ -46,11 +47,13 @@
     "vitest": "^4.1.10"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
     "close-with-grace": "^2.5.0",
     "fastify": "^5.10.0",
     "fastify-plugin": "^6.0.0",
     "ioredis": "^5.11.1",
     "node-pg-migrate": "^9.0.0",
+    "openai": "^7.0.0",
     "pg": "^8.22.0",
     "pgvector": "^0.3.0",
     "pino": "^10.3.1",

@@ -59,6 +59,20 @@ import { normalizeResponse } from './normalizer'       // relative within a modu
 
 ## Code Organization Principles
 
+- **Classes, not factory functions** — anything with collaborators is a class: services,
+  resolvers, repositories, provider adapters, the registry. Name it `Default<Interface>`
+  (`DefaultCredentialResolver`, `DefaultCompletionService`, `DefaultProviderRegistry`) implementing
+  the `<Interface>` its consumers depend on, or after the role where the interface has several
+  distinct implementations (`OpenAiAdapter`, `AnthropicAdapter`, `OllamaAdapter`). Take
+  collaborators in the constructor — positionally up to two, as one options object beyond that so
+  call sites stay readable and an optional dependency (a clock, a transport, a client factory)
+  needs no argument gap. Hold them in `#private` fields, and keep per-request state out of fields
+  entirely: one instance is built at plugin registration and serves every request. Do not write a
+  `create*` function that returns an object literal.
+  The exceptions are the things that are function-shaped by contract, not by choice: **Fastify
+  plugins and hooks** (`createAdminRoutes`, `createAuthenticateHook`, `createAdminGuard`) must
+  *be* functions for Fastify to register or run them, and **pure data factories** like
+  `createDefaultContext`, which return a plain value with no behaviour to bind.
 - **Two datastores only** — Redis and Postgres/`pgvector`. Do not introduce a third store.
 - **Shared request context is the integration seam** — stages read/write its fields; they do not
   call into each other's internals to pass data.

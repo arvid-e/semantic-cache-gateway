@@ -13,6 +13,17 @@ function singleKeyConfig(): AuthConfig['encryption'] {
 
 const SECRET = 'sk-provider-secret-value-123';
 
+/**
+ * Corrupt one byte of a buffer in place by flipping all of its bits.
+ *
+ * Goes through `readUInt8`/`writeUInt8` rather than `buffer[index] ^= 0xff`:
+ * under `noUncheckedIndexedAccess` an indexed read is `number | undefined`, so
+ * the compound assignment does not type-check.
+ */
+function flipByte(buffer: Buffer, index: number): void {
+  buffer.writeUInt8(buffer.readUInt8(index) ^ 0xff, index);
+}
+
 describe('DefaultEnvelopeEncryption', () => {
   it('round-trips a secret through encrypt then decrypt', () => {
     const env = new DefaultEnvelopeEncryption(singleKeyConfig());
@@ -51,7 +62,7 @@ describe('DefaultEnvelopeEncryption', () => {
     const env = new DefaultEnvelopeEncryption(singleKeyConfig());
     const { ciphertext, keyVersion } = env.encrypt(SECRET);
     const tampered = Buffer.from(ciphertext);
-    tampered[tampered.length - 1] ^= 0xff; // flip a byte of the sealed body
+    flipByte(tampered, tampered.length - 1); // a byte of the sealed body
 
     expect(() => env.decrypt(tampered, keyVersion)).toThrow(DecryptionError);
   });
@@ -60,7 +71,7 @@ describe('DefaultEnvelopeEncryption', () => {
     const env = new DefaultEnvelopeEncryption(singleKeyConfig());
     const { ciphertext, keyVersion } = env.encrypt(SECRET);
     const tampered = Buffer.from(ciphertext);
-    tampered[12] ^= 0xff; // first byte of the 16-byte auth tag
+    flipByte(tampered, 12); // first byte of the 16-byte auth tag
 
     expect(() => env.decrypt(tampered, keyVersion)).toThrow(DecryptionError);
   });

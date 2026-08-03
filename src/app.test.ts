@@ -73,7 +73,7 @@ describe('buildApp', () => {
   });
 
   it('logs each request lifecycle with method, url, status, and latency', async () => {
-    // Req 3.4: the assembled app emits a structured start/completion line per
+    // The assembled app emits a structured start/completion line per
     // request. Capture the child-logger calls Fastify makes and assert the
     // correlating metadata is present, rather than trusting the framework
     // default silently.
@@ -144,7 +144,7 @@ describe('buildApp', () => {
   });
 
   it('accepts an additional plugin without any bootstrap change', async () => {
-    // The extensibility contract (Req 1.5): a later spec registers its own
+    // The extensibility contract: a later spec registers its own
     // plugin on the returned instance; buildApp itself never changes.
     const app = buildApp(testConfig());
 

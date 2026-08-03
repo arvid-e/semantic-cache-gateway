@@ -18,5 +18,11 @@
       "approved": true
     }
   },
-  "ready_for_implementation": true
+  "ready_for_implementation": false,
+  "deferred": {
+    "deferred_at": "2026-08-01",
+    "reason": "Descoped for the one-month deadline. Commodity capability (retry + circuit breaker); the differentiated work is dual-layer-caching. Spec is complete and implementable as-is.",
+    "seam": "Wraps ProviderAdapter.complete and satisfies the CompletionService contract; adapters already set maxRetries: 0 and take ProviderCallOptions per call so timeouts can vary per attempt. Requires no change to shipped code.",
+    "see": ".kiro/steering/roadmap.md#scope-reduction-2026-08-01"
+  }
 }

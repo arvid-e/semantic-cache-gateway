@@ -108,7 +108,14 @@ describe('DefaultCredentialService', () => {
     // Tamper with the stored ciphertext so the auth tag fails.
     const stored = repo.raw({ tenantId: 't1', provider: 'openai' });
     if (!stored) expect.fail('expected a stored credential');
-    stored.ciphertext[stored.ciphertext.length - 1] ^= 0xff;
+    // `readUInt8`/`writeUInt8` rather than `ciphertext[i] ^= 0xff`: under
+    // `noUncheckedIndexedAccess` an indexed read is `number | undefined`, so the
+    // compound assignment does not type-check.
+    const last = stored.ciphertext.length - 1;
+    stored.ciphertext.writeUInt8(
+      stored.ciphertext.readUInt8(last) ^ 0xff,
+      last,
+    );
 
     await expect(service.getDecrypted('t1', 'openai')).rejects.toBeInstanceOf(
       DecryptionError,

@@ -122,8 +122,7 @@ describe('pgPlugin', () => {
     // pg keeps type parsers per client, so the hook — not a one-off startup
     // call — is what makes vectors decode on all pooled connections.
     const onConnect = poolConfig().onConnect as
-      | ((client: ClientBase) => Promise<void>)
-      | undefined;
+      ((client: ClientBase) => Promise<void>) | undefined;
     await onConnect?.(client);
 
     expect(mocks.registerTypes).toHaveBeenCalledWith(client);

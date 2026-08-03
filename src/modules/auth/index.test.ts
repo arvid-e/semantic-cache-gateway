@@ -67,7 +67,7 @@ describe('authPlugin wiring', () => {
   });
 });
 
-// Confirms the shared logger redacts the auth secret field shapes (Req 6.1).
+// Confirms the shared logger redacts the auth secret field shapes.
 function captureLogger(): { logger: Logger; lines: string[] } {
   const config: Config = {
     httpPort: 3000,
