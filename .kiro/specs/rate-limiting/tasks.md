@@ -1,5 +1,12 @@
 # Implementation Plan
 
+> [!IMPORTANT]
+> **DEFERRED 2026-08-01 — not part of the one-month scope. Do not implement.**
+> Descoped because it is a commodity capability (a Redis token bucket); the differentiated work is `dual-layer-caching`.
+> **Seam it plugs into:** Sits in front of the completions route as an `onRequest` hook. Requires no change to shipped code.
+> The spec is left complete and implementable so the deferral is legible as a decision
+> rather than a gap. See `.kiro/steering/roadmap.md` § Scope Reduction (2026-08-01).
+
 > **Solo implementation note:** Work top-to-bottom; ignore `(P)` markers. Open `design.md`
 > (File Structure Plan + Components) for the concrete interfaces, make the observable bullet true,
 > then run the checks. The middleware is applied to the gateway routes *after* auth — see

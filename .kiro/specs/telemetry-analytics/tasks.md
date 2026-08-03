@@ -1,5 +1,12 @@
 # Implementation Plan
 
+> [!IMPORTANT]
+> **DEFERRED 2026-08-01 — not part of the one-month scope. Do not implement.**
+> Descoped because the false-hit measurement needs a labelled test set and a pass/fail tally (a benchmark harness), not a metrics pipeline; `dual-layer-caching` task 1.3 already records one cache status and one outcome per request.
+> **Seam it plugs into:** Reads the shared `RequestContext`, which already carries `provider`, `model`, `params`, `tokenUsage`, `latencyMs`, and `cacheStatus`. Requires no change to shipped code.
+> The spec is left complete and implementable so the deferral is legible as a decision
+> rather than a gap. See `.kiro/steering/roadmap.md` § Scope Reduction (2026-08-01).
+
 > **Solo implementation note:** Work top-to-bottom; ignore `(P)` markers. Open `design.md`
 > (File Structure Plan + Components) for the concrete interfaces, make the observable bullet true,
 > then run the checks. This spec only *reads* the request-context signals other specs populate, and

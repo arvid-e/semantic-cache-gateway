@@ -18,5 +18,11 @@
       "approved": true
     }
   },
-  "ready_for_implementation": true
+  "ready_for_implementation": false,
+  "deferred": {
+    "deferred_at": "2026-08-01",
+    "reason": "Descoped for the one-month deadline. The false-hit measurement needs a labelled test set and a pass/fail tally (a benchmark harness), not a metrics pipeline; dual-layer-caching task 1.3 already records one cache status and one outcome per request.",
+    "seam": "Reads the shared RequestContext, which already carries provider, model, params, tokenUsage, latencyMs, cacheStatus. Requires no change to shipped code.",
+    "see": ".kiro/steering/roadmap.md#scope-reduction-2026-08-01"
+  }
 }
