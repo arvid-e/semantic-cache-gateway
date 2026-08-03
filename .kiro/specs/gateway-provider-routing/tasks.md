@@ -78,23 +78,23 @@
   - _Boundary: CompletionService_
   - _Depends: 2.4, 3.1_
 
-- [ ] 4. Integration: endpoint and plugin wiring
-- [ ] 4.1 Implement the completions endpoint under authentication
+- [x] 4. Integration: endpoint and plugin wiring
+- [x] 4.1 Implement the completions endpoint under authentication
   - Add the `POST /v1/chat/completions` handler behind the auth middleware: validate the payload, pass any per-request provider key to the service, delegate to the completion service, and map provider errors/timeouts to a normalized error response that carries no credential
   - Observable: an authenticated valid request returns the normalized response, an invalid payload returns a client error with no provider call, a provider failure returns a normalized error without the credential, and an unauthenticated request is rejected
   - _File: src/modules/gateway/routes/completions-route.ts_
   - _Requirements: 1.1, 1.3, 4.3_
   - _Boundary: Completions Route_
   - _Depends: 1.3, 3.2_
-- [ ] 4.2 Register the gateway plugin and expose downstream seams
+- [x] 4.2 Register the gateway plugin and expose downstream seams
   - Register the gateway module onto the foundation app after the auth plugin, expose the completion service and adapter interface for downstream specs, and document the gateway environment variables
   - Observable: the app boots with the completion endpoint registered behind authentication and the completion service exposed for downstream wrapping, while the foundation health endpoints remain unaffected
   - _File: src/modules/gateway/index.ts, src/app.ts_
   - _Requirements: 1.1_
   - _Depends: 4.1_
 
-- [ ] 5. Validation: routing integration tests
-- [ ] 5.1 Add integration tests for the completion flow
+- [x] 5. Validation: routing integration tests
+- [x] 5.1 Add integration tests for the completion flow
   - Exercise end-to-end flows against stubbed provider endpoints (and the Compose Ollama service): an authenticated request selects the provider, uses the BYOK key, and returns a normalized response with the resolved model and token usage; each of the three providers routes to its adapter; an unsupported provider and a missing credential are rejected without a provider call; and no provider-specific field leaks into the normalized response
   - Observable: the integration suite passes, proving provider selection, BYOK invocation, normalized responses across providers, missing-credential and unsupported-provider rejection, and absence of provider-specific leakage
   - _File: src/modules/gateway/gateway.integration.test.ts_
