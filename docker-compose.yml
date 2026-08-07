@@ -7,16 +7,11 @@
 # readiness endpoint answers healthy with no manual steps (Req 8.3).
 #
 # Datastore credentials are local-dev defaults, inlined so the stack works out
-# of the box; each is overridable from the shell or an `.env` file via
-# ${VAR:-default} without editing this file. They are not production secrets.
+# of the box and overridable via ${VAR:-default}. Not production secrets.
 #
-# The auth module's secrets are the exception: they are `${VAR:?...}`, with no
-# default, so an unset one aborts `up` with a named error instead of starting a
-# gateway whose keyring is a value published in this repository. Those keys
-# encrypt tenants' provider API keys — a shared "dev default" for them would be
-# a real credential leak the moment the stack ran anywhere but a laptop. Copy
-# `.env.example` to `.env` and generate values; the gateway is the only service
-# that needs them.
+# The auth secrets are `${VAR:?...}` instead — no default, so an unset one
+# aborts `up` by name rather than booting a gateway whose keyring is published
+# in this repo. They encrypt tenants' provider keys. Copy `.env.example`.
 #
 # Req 4.5: the gateway relies on exactly two *datastores* — Postgres and Redis.
 # Ollama is a local embeddings/inference service, not a store, and readiness
@@ -92,8 +87,7 @@ services:
       POSTGRES_POOL_MAX: ${POSTGRES_POOL_MAX:-10}
       REDIS_URL: redis://redis:6379
       OLLAMA_URL: http://ollama:11434
-      # The auth module's own env segment (src/modules/auth/config.ts), which
-      # the entrypoint validates at startup alongside the block above.
+      # The auth module's own env segment, validated at startup alongside these.
       AUTH_ENCRYPTION_KEYS: ${AUTH_ENCRYPTION_KEYS:?generate one, see .env.example}
       AUTH_ACTIVE_KEY_VERSION: ${AUTH_ACTIVE_KEY_VERSION:-1}
       AUTH_GATEWAY_KEY_PEPPER: ${AUTH_GATEWAY_KEY_PEPPER:?generate one, see .env.example}
