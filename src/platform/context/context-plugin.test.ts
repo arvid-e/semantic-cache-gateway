@@ -22,6 +22,8 @@ const DEFAULTS: RequestContext = {
   messages: [],
   latestUserMessage: null,
   lastAssistantMessage: null,
+  // Cache decision path, merged in by the cache module.
+  cacheOutcome: null,
 };
 
 /**

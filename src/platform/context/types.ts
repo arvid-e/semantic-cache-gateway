@@ -6,9 +6,16 @@
  * them, and extend the shape with their own fields via declaration merging.
  */
 
-/** `unknown` is the pre-cache default: no stage has classified the request yet. */
+/**
+ * `unknown` is the pre-cache default: no stage has classified the request yet.
+ *
+ * Refined in place by `dual-layer-caching` — the one deliberate edit to this
+ * type, since declaration merging can add a field but cannot narrow one. The
+ * values name what served the request, so `live_provider` is exactly the set
+ * that reached a provider.
+ */
 export type CacheStatus =
-  'unknown' | 'miss' | 'exact_hit' | 'semantic_hit' | 'bypassed';
+  'unknown' | 'cache_hit_exact' | 'cache_hit_semantic' | 'live_provider';
 
 /** `closed` is the healthy default (traffic flows). */
 export type BreakerState = 'closed' | 'open' | 'half_open';
@@ -72,5 +79,9 @@ export function createDefaultContext(): RequestContext {
     messages: [],
     latestUserMessage: null,
     lastAssistantMessage: null,
+    // Declared by `src/modules/cache/context.ts`, defaulted here for the same
+    // reason: `null` means the cache has not run, which no real outcome can be
+    // mistaken for.
+    cacheOutcome: null,
   };
 }
