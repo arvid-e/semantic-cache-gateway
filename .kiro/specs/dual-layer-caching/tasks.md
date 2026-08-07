@@ -51,14 +51,14 @@
   - _Requirements: 8.2 (Req 5 withdrawn)_
 
 - [ ] 2. Core: cache layers, embeddings, and the advisory verdict
-- [ ] 2.1 (P) Implement the local embedding client
+- [x] 2.1 (P) Implement the local embedding client
   - Batch-embed texts through the in-stack Ollama embed endpoint using the configured model, returning 768-dim vectors and signaling an embedding-unavailable condition on failure without any external keyed call
   - Observable: the client returns 768-dim embeddings for a batch of texts and raises the embedding-unavailable signal when the local embedder errors
   - _File: src/modules/cache/embedding-client.ts_
   - _Requirements: 3.1, 3.4, 6.3_
   - _Boundary: Embedding Client_
   - _Depends: 1.2_
-- [ ] 2.2 (P) Implement the exact-match cache layer
+- [x] 2.2 (P) Implement the exact-match cache layer
   - Store and retrieve the normalized response under a tenant-scoped hashed key with a configurable TTL, and support invalidation by tenant
   - Observable: a set followed by a get returns the stored normalized response within TTL, a different tenant's key never matches, an expired entry is not returned, and invalidation removes a tenant's entries
   - _File: src/modules/cache/exact-cache.ts_
