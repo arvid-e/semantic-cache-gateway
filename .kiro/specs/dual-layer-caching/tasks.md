@@ -6,25 +6,25 @@
 > skeleton first, then semantic, then verification — build and test each layer before the next.
 > See `.kiro/steering/implementation-guide.md`.
 
-- [ ] 1. Foundation: schema, config, contracts, and utilities
-- [ ] 1.1 Author the semantic-cache migration
+- [x] 1. Foundation: schema, config, contracts, and utilities
+- [x] 1.1 Author the semantic-cache migration
   - Add this spec's migration creating `semantic_cache_entries` with `prompt_embedding` and nullable `originating_context_embedding` as `vector(768)`, the stored normalized response, `expires_at`, and a tenant foreign key; add the HNSW cosine index and the scope and expiry indexes
   - Observable: running migrations creates the table with both `vector(768)` columns, the HNSW `vector_cosine_ops` index on the prompt embedding, the `(tenant_id, model, params_hash)` and `expires_at` indexes, and the tenant foreign key
   - _File: migrations/{timestamp}_semantic_cache.sql_
   - _Requirements: 4.1, 7.2_
-- [ ] 1.2 (P) Implement the cache config segment
+- [x] 1.2 (P) Implement the cache config segment
   - Validate the cache environment segment: similarity, topic-shift, and verification thresholds; exact and semantic TTLs; and the embedding model name — with fail-fast, secret-safe semantics
   - Observable: an invalid or missing cache setting fails plugin configuration naming the setting, and a valid environment yields a typed config exposing the three thresholds, the two TTLs, and the embedding model
   - _File: src/modules/cache/config.ts_
   - _Requirements: 3.5, 5.5, 7.3_
   - _Boundary: Cache Config_
-- [ ] 1.3 (P) Implement the cache status vocabulary, outcome types, and context signals
+- [x] 1.3 (P) Implement the cache status vocabulary, outcome types, and context signals
   - Define the canonical cache-status values, the detection/verification outcome type, and the entry/candidate contracts; refine the shared request context to the canonical status and add the outcome field with defaults; provide the writer that records exactly one status and one outcome
   - Observable: the status and outcome contracts are exported with defaults, writing records exactly one status and one outcome per request, and no savings or metrics are computed here
   - _File: src/modules/cache/types.ts, src/modules/cache/context.ts, src/platform/context/types.ts (refine CacheStatus)_
   - _Requirements: 8.1, 8.2, 8.4_
   - _Boundary: Cache Types, Context Signals_
-- [ ] 1.4 (P) Implement the key composer and cosine utility
+- [x] 1.4 (P) Implement the key composer and cosine utility
   - Compose the cache-key parameter hash and the exact-match key from the tenant, resolved model, cache-relevant params, and canonicalized conversation; implement cosine similarity for two embedding vectors
   - Observable: identical tenant/model/params/messages produce the same exact key while any change produces a different one, and the cosine utility returns the correct similarity for known vectors
   - _File: src/modules/cache/key-composer.ts, src/modules/cache/cosine.ts_
