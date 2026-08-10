@@ -1,5 +1,8 @@
 node_modules
 .env
 .env.**
+# The documented env contract carries no secrets and has to reach a fresh
+# clone; `.env.**` above would otherwise swallow it along with .env.local etc.
+!.env.example
 dist
 build
