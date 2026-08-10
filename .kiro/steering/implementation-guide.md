@@ -92,9 +92,14 @@ you implement caching and resilience, the final wiring in `src/app.ts` establish
   (foundation only creates the baseline + enables `pgvector`).
 
 ## Where the genuinely hard parts are (expect to ask for help here)
-- **dual-layer-caching task group 3** — the context-aware decision table (topic-shift → semantic search →
-  candidate-only verification → safety-biased fallback). Split into checkpoints; get the exact+live skeleton
-  green first, then layer in semantic, then verification.
+- **dual-layer-caching task group 3** — no longer the hard part. The context-aware decision table was
+  **withdrawn on 2026-08-08** after measurement (`.kiro/specs/dual-layer-caching/research.md` → Measurement
+  Log): the similarity threshold is unsafe at every value and topic-shift detection performs below chance.
+  The semantic layer now runs in **shadow** — it searches and records, and never serves. Group 3 is an exact
+  cache plus an unconditional live path, with observation alongside. The remaining care is structural: keep
+  the semantic candidate out of scope where the response is produced.
+- **dual-layer-caching task group 4** — the false-hit benchmark is now that spec's headline deliverable and
+  the last thing to cut. It depends only on task 2.1, so it can be built before group 3 if time is short.
 - **resilience-failover task group 3** — breaker gating + primary→secondary failover, and the composition
   order above.
 - **Atomic Lua** (rate-limiting 2.1, resilience 2.1) — getting refill/transition logic right under concurrency.
@@ -143,11 +148,12 @@ on the group's branch. Two optional trims: fold each `*-tests` branch into the p
 - `feat/ratelimit-integration` — 3.1, 3.2
 - `feat/ratelimit-tests` — 4.1
 
-### `epic/dual-layer-caching`
+### `epic/dual-layer-caching`  *(revised 2026-08-08 — shadow mode)*
 - `feat/cache-foundation` — 1.1, 1.2, 1.3, 1.4
-- `feat/cache-core` — 2.1, 2.2, 2.3, 2.4, 2.5
-- `feat/cache-orchestration` — 3.1, 3.2, 3.3, 3.4
-- `feat/cache-tests` — 4.1
+- `feat/cache-core` — 2.1, 2.2, 2.3, 2.5 *(+ 1.5 revision cleanup; 2.4 deleted, Req 5 withdrawn)*
+- `feat/cache-orchestration` — 3.1, 3.2, 3.4 *(old 3.2/3.3 acceptance paths replaced by one shadow task)*
+- `feat/cache-bench` — 4.1, 4.2, 4.3 *(the benchmark + findings report; only depends on 2.1)*
+- `feat/cache-tests` — 5.1
 
 ### `epic/resilience-failover`
 - `feat/resilience-foundation` — 1.1, 1.2

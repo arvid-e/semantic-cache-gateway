@@ -29,6 +29,23 @@ tested, and reviewed independently over a shared foundation.
   - Python / Go — TypeScript + Fastify chosen for performance, schema validation, and a single-language stack.
 
 ## Semantic-Matching Correctness Decision (owned by `dual-layer-caching`)
+
+> **SUPERSEDED 2026-08-08 — the strategy below was measured and does not work.** Both guards failed:
+> the similarity threshold admits wrong answers at every value (zero false accepts requires a
+> threshold retaining no genuine paraphrases), and topic-shift detection performs **below chance**
+> (AUC 0.27–0.36, where 0.5 is chance, across two embedding models and three prefix variants).
+> A larger embedding model (`mxbai-embed-large`) and a local generative verifier (`llama3.2:3b`)
+> were tested and rejected. Evidence: `.kiro/specs/dual-layer-caching/research.md` → Measurement Log.
+>
+> **Replacement**: the semantic layer runs in **shadow** — it searches, records the candidate it
+> would have served and an advisory verification verdict, and the request goes live regardless. No
+> semantic candidate reaches a client. A committed benchmark harness measures the would-be false-hit
+> rate against labelled fixtures; that measurement is now this spec's headline deliverable.
+>
+> The three numbered steps below are retained as the record of what was tried and disproven — they
+> describe **no shipped behaviour**. The rejected-alternatives list still stands, and now has the
+> chosen approach alongside it as a fourth rejection.
+
 Semantic caching on the latest user message alone produces **false cache hits** on
 context-dependent follow-ups ("what command should I run?", "yes", "teach me"); embedding the
 entire history kills the hit rate because histories become unique almost immediately. The chosen
@@ -51,6 +68,13 @@ strategy is **cheap detection first, expensive verification only when needed**:
   non-zero false hits). Goal: measurably better than the naive alternatives, with instrumentation
   to prove it — not a perfect classifier. The proving instrumentation is the **benchmark harness**
   (see Scope Reduction below), not `telemetry-analytics`.
+  - **This framing was too narrow (2026-08-08).** Short follow-ups were treated as a contained edge
+    case, and worse, they were assumed "biased to live" when the measurement shows they were biased
+    to **hit** — identical short text scores 1.0 against itself and cleared the threshold with
+    verification skipped. The unsafe accept rule also covers ordinary first-turn prompts (unit
+    conversions, enable/disable, entity swaps), so it was never a narrow hard case. The benchmark
+    harness survives this revision intact and is now the deliverable rather than the proof of a
+    claim; what changed is that it reports a negative result.
 
 ## Scope Reduction (2026-08-01)
 The one-month deadline does not fit the original seven specs. Three are **deferred**, deliberately
