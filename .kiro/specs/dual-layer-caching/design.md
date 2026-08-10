@@ -130,7 +130,8 @@ graph TB
 src/modules/cache/
 ├── index.ts                    # plugin: validate config, wrap CompletionService, expose CachedCompletionService + invalidate
 ├── config.ts                   # zod segment (similarity + verification thresholds, exact/semantic TTL, embedding model)
-├── types.ts                    # CacheStatus, CacheOutcome, VerificationResult, SemanticEntry, LookupResult
+├── types.ts                    # CacheStatus, CacheOutcome, VerificationResult, SemanticEntry, SemanticCandidate, SemanticSearchResult
+├── normalized-response.ts      # shared structural guard for a response read back out of either store
 ├── context.ts                  # RequestContext refine (cacheStatus) + add cacheOutcome + write helpers
 ├── cosine.ts                   # in-app cosine similarity for two 768-vectors (detection + verification)
 ├── key-composer.ts             # params_hash + exact key over (tenant, model, params, canonical messages)
@@ -328,8 +329,15 @@ interface SemanticCandidate {
   similarity: number;
   originatingContext: number[] | null;
 }
+// `SemanticCandidate | null` cannot say "nothing qualified, and the nearest entry
+// scored 0.71". Shadow mode needs both facts: the threshold decision *and* the
+// distribution (Req 3.2). `bestSimilarity` is null only when nothing was in scope.
+interface SemanticSearchResult {
+  candidate: SemanticCandidate | null;
+  bestSimilarity: number | null;
+}
 interface SemanticCache {
-  search(scope: { tenantId: string; model: string; paramsHash: string }, queryEmbedding: number[]): Promise<SemanticCandidate | null>;
+  search(scope: { tenantId: string; model: string; paramsHash: string }, queryEmbedding: number[]): Promise<SemanticSearchResult>;
   store(entry: {
     tenantId: string; model: string; paramsHash: string;
     promptText: string; promptEmbedding: number[];

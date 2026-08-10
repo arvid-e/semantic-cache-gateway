@@ -1,5 +1,6 @@
 import type { Redis } from 'ioredis';
-import { FINISH_REASONS, type NormalizedResponse } from '../gateway/types.js';
+import type { NormalizedResponse } from '../gateway/types.js';
+import { isNormalizedResponse } from './normalized-response.js';
 
 /**
  * The exact layer: byte-identical repeats, served from Redis without touching
@@ -131,15 +132,12 @@ export class RedisExactCache implements ExactCache {
 }
 
 /**
- * A stored entry that will not parse is treated as a miss, not an error. It can
- * only come from a corrupted write or a response shape that changed under a
- * populated cache; either way the request is still answerable by going live,
- * and throwing would turn one bad entry into a permanently failing request that
- * its own TTL would eventually have cleared.
+ * Unparseable JSON is a miss, on the same reasoning as a structurally invalid
+ * entry — see {@link isNormalizedResponse}.
  *
  * Redis *transport* failures are deliberately not caught here — an unreachable
- * cache is the orchestrator's call to make (Req 6.6), not something this layer
- * should quietly convert into a miss.
+ * cache is the orchestrator's call to make, not something this layer should
+ * quietly convert into a miss.
  */
 function parseEntry(raw: string): NormalizedResponse | null {
   let parsed: unknown;
@@ -150,35 +148,4 @@ function parseEntry(raw: string): NormalizedResponse | null {
   }
 
   return isNormalizedResponse(parsed) ? parsed : null;
-}
-
-function isNormalizedResponse(value: unknown): value is NormalizedResponse {
-  if (typeof value !== 'object' || value === null) return false;
-  const entry = value as Partial<NormalizedResponse>;
-
-  const message: unknown = entry.message;
-  const usage: unknown = entry.usage;
-
-  return (
-    typeof entry.id === 'string' &&
-    typeof entry.provider === 'string' &&
-    typeof entry.model === 'string' &&
-    typeof message === 'object' &&
-    message !== null &&
-    typeof (message as { content?: unknown }).content === 'string' &&
-    typeof usage === 'object' &&
-    usage !== null &&
-    isUsage(usage) &&
-    typeof entry.finishReason === 'string' &&
-    (FINISH_REASONS as readonly string[]).includes(entry.finishReason)
-  );
-}
-
-function isUsage(value: object): boolean {
-  const usage = value as Record<string, unknown>;
-  return (
-    typeof usage.promptTokens === 'number' &&
-    typeof usage.completionTokens === 'number' &&
-    typeof usage.totalTokens === 'number'
-  );
 }

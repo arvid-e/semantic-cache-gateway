@@ -65,7 +65,7 @@
   - _Requirements: 2.2, 2.3, 4.2, 7.1, 7.3, 7.4_
   - _Boundary: Exact Cache_
   - _Depends: 1.3, 1.4_
-- [ ] 2.3 (P) Implement the semantic cache layer
+- [x] 2.3 (P) Implement the semantic cache layer
   - Store entries (prompt text/embedding, originating-context embedding, response, expiry) and search for the nearest entry within the requesting tenant, model, and params that is unexpired and at or above the similarity threshold; support invalidation by tenant
   - Unchanged by the revision — the store/search/invalidate mechanics were never what failed. What changed is downstream: a returned candidate is an observation, not an authorization (Req 3.2). Return the best similarity even when it falls below the threshold, so the shadow signal can record the distribution
   - Observable: a stored entry is returned as a candidate above threshold, entries below threshold or owned by another tenant or expired are never returned as candidates, the best similarity is reported regardless, the originating context is persisted, and invalidation removes a tenant's entries

@@ -59,3 +59,17 @@ export interface SemanticCandidate {
   readonly similarity: number;
   readonly originatingContext: number[] | null;
 }
+
+/**
+ * The design's `SemanticCandidate | null` cannot say "nothing qualified, and
+ * the nearest entry scored 0.71" — the two facts are independent, and shadow
+ * mode needs both: `candidate` is the threshold decision, `bestSimilarity` is
+ * the distribution the benchmark's synthetic fixtures cannot supply.
+ *
+ * `bestSimilarity` is `null` only when there was nothing in scope to compare
+ * against, which is a different observation from a poor match.
+ */
+export interface SemanticSearchResult {
+  readonly candidate: SemanticCandidate | null;
+  readonly bestSimilarity: number | null;
+}
