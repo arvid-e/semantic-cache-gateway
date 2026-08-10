@@ -50,7 +50,7 @@
   - _File: src/modules/cache/types.ts, src/modules/cache/context.ts, src/modules/cache/config.ts, .env.example_
   - _Requirements: 8.2 (Req 5 withdrawn)_
 
-- [ ] 2. Core: cache layers, embeddings, and the advisory verdict
+- [x] 2. Core: cache layers, embeddings, and the advisory verdict
 - [x] 2.1 (P) Implement the local embedding client
   - Batch-embed texts through the in-stack Ollama embed endpoint using the configured model, returning 768-dim vectors and signaling an embedding-unavailable condition on failure without any external keyed call
   - Observable: the client returns 768-dim embeddings for a batch of texts and raises the embedding-unavailable signal when the local embedder errors
@@ -77,7 +77,7 @@
   - Not deferred and not blocked: the mechanism performs at or below chance (AUC 0.2678–0.3632 across two models and three prefix variants, 0.5 = chance) and is not fixable by tuning. See `research.md` → E3
   - Nothing to build. `src/modules/cache/topic-shift-detector.ts` is not created. Checked off so the group can close; the strikethrough is the record
   - _Requirements: ~~5.1, 5.2, 5.3, 5.4~~ (withdrawn)_
-- [ ] 2.5 (P) Implement the advisory context-chain verdict
+- [x] 2.5 (P) Implement the advisory context-chain verdict
   - Compare the current conversation's last-AI-response embedding to a candidate's stored originating-context embedding against the verification threshold, treating a missing stored context as inconclusive, using no external or keyed call
   - **This gates nothing** (Req 6.5). It returns a verdict that is written to `cacheOutcome` and read by no branch. Name it so that is obvious at the call site, and do not give it a boolean-returning convenience wrapper — that is the shape that invites a future `if`
   - Observable: an aligned context at or above the threshold yields `passed`, a below-threshold context yields `failed`, a candidate with no stored originating context yields `inconclusive`, and no caller branches on the result
@@ -143,3 +143,8 @@
   - _File: src/modules/cache/cache.integration.test.ts_
   - _Requirements: 1.1, 1.2, 1.5, 2.2, 3.1, 3.2, 3.3, 3.6, 4.1, 4.3, 6.1, 7.1, 7.3, 7.4, 8.5_
   - _Depends: 3.4_
+
+## Implementation Notes
+
+- **2.5 → 3.2 obligation:** the advisory verifier lets `cosineSimilarity`'s `RangeError` propagate on a width mismatch (an embedding-model change under a populated cache) rather than scoring it as `failed` — a misalignment that was never measured. The shadow path in 3.2 must catch it and record it as a shadow error per Req 3.6; the request goes live regardless.
+- **2.5 threshold tests:** pin a `>=` boundary with exactly-representable pairs (`[1,0]`/`[0,1]` = 0, `[1,0]`/`[1,0]` = 1) and assert the similarity with `toBe`. A wide `filled(0.5)` pair accumulates to `1.0000000000000002` over 768 terms, sits *above* a threshold of 1, and lets a `>` mutant survive the whole suite.
