@@ -18,7 +18,7 @@ export interface ChatMessage {
 /**
  * Carries the *full* conversation, not just the latest user turn: adapters need
  * the history to call their provider, and `dual-layer-caching` later reads it
- * for topic-shift detection and context-chain verification. The generation
+ * for its semantic search and context-chain verdict. The generation
  * params are the ones all three providers share; anything provider-specific is
  * deliberately absent.
  */

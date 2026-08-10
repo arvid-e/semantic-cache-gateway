@@ -3,7 +3,6 @@ import { CacheConfigError, loadCacheConfig } from './config.js';
 /** A complete, valid cache environment; each test perturbs one setting. */
 const VALID: NodeJS.ProcessEnv = {
   CACHE_SIMILARITY_THRESHOLD: '0.83',
-  CACHE_TOPIC_SHIFT_THRESHOLD: '0.6',
   CACHE_VERIFICATION_THRESHOLD: '0.75',
   CACHE_EXACT_TTL_SECONDS: '3600',
   CACHE_SEMANTIC_TTL_SECONDS: '86400',
@@ -22,19 +21,19 @@ function envWithout(key: string): NodeJS.ProcessEnv {
 
 const THRESHOLDS = [
   'CACHE_SIMILARITY_THRESHOLD',
-  'CACHE_TOPIC_SHIFT_THRESHOLD',
   'CACHE_VERIFICATION_THRESHOLD',
 ] as const;
 
 const TTLS = ['CACHE_EXACT_TTL_SECONDS', 'CACHE_SEMANTIC_TTL_SECONDS'] as const;
 
 describe('loadCacheConfig — valid environment', () => {
-  it('exposes the three thresholds, the two TTLs, and the embedding model', () => {
+  it('exposes the two thresholds, the two TTLs, and the embedding model', () => {
     const config = loadCacheConfig(VALID);
 
+    // No topic-shift threshold: Req 5 is withdrawn, and a setting that
+    // configures nothing is a trap for the next reader.
     expect(config).toEqual({
       similarityThreshold: 0.83,
-      topicShiftThreshold: 0.6,
       verificationThreshold: 0.75,
       exactTtlSeconds: 3600,
       semanticTtlSeconds: 86400,

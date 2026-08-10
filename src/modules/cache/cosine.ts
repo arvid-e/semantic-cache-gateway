@@ -1,10 +1,10 @@
 /**
- * Cosine similarity over two embedding vectors, used by both context-aware
- * checks: topic-shift detection compares the latest user message against the
- * last AI response, and context-chain verification compares the current
- * conversation's last AI response against a candidate's originating context.
+ * Cosine similarity over two embedding vectors, used by the advisory
+ * context-chain verdict: it compares the current conversation's last AI
+ * response against a candidate's originating context. The verdict is recorded,
+ * never acted on (Req 6.5).
  *
- * In-app rather than in SQL because both comparisons run on vectors already in
+ * In-app rather than in SQL because that comparison runs on vectors already in
  * memory — the pgvector `<=>` operator stays for the indexed nearest search,
  * where the ranking is the database's job.
  */

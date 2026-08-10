@@ -6,7 +6,6 @@ import { z } from 'zod';
 /** No defaults: a default threshold would be a silent product decision. */
 const cacheConfigSchema = z.object({
   CACHE_SIMILARITY_THRESHOLD: threshold(),
-  CACHE_TOPIC_SHIFT_THRESHOLD: threshold(),
   CACHE_VERIFICATION_THRESHOLD: threshold(),
   CACHE_EXACT_TTL_SECONDS: ttlSeconds(),
   CACHE_SEMANTIC_TTL_SECONDS: ttlSeconds(),
@@ -49,12 +48,16 @@ function ttlSeconds() {
   );
 }
 
-/** Read by the cache layers, the detector, and the verifier — never `process.env`. */
+/** Read by the cache layers and the verifier — never `process.env`. */
 export interface CacheConfig {
-  /** Minimum cosine similarity for a stored entry to be a candidate. */
+  /**
+   * Minimum cosine similarity for a stored entry to be *recorded* as a
+   * candidate. It authorizes nothing: no threshold value causes a semantic
+   * response to be served (Req 3.2). Configurable so the recorded boundary can
+   * be varied for measurement without a code change (Req 3.5).
+   */
   readonly similarityThreshold: number;
-  /** At or above this, the latest user message is context-dependent. */
-  readonly topicShiftThreshold: number;
+  /** Bound on the advisory verdict, which likewise gates nothing (Req 6.5). */
   readonly verificationThreshold: number;
   readonly exactTtlSeconds: number;
   readonly semanticTtlSeconds: number;
@@ -95,7 +98,6 @@ export function loadCacheConfig(
 
   return Object.freeze({
     similarityThreshold: parsed.CACHE_SIMILARITY_THRESHOLD,
-    topicShiftThreshold: parsed.CACHE_TOPIC_SHIFT_THRESHOLD,
     verificationThreshold: parsed.CACHE_VERIFICATION_THRESHOLD,
     exactTtlSeconds: parsed.CACHE_EXACT_TTL_SECONDS,
     semanticTtlSeconds: parsed.CACHE_SEMANTIC_TTL_SECONDS,

@@ -43,7 +43,7 @@
   - _File: src/modules/cache/key-composer.ts, src/modules/cache/cosine.ts_
   - _Requirements: 2.1, 4.1_
   - _Boundary: Key Composer, Cosine_
-- [ ] 1.5 Remove the withdrawn topic-shift contract from shipped code (revision cleanup)
+- [x] 1.5 Remove the withdrawn topic-shift contract from shipped code (revision cleanup)
   - Tasks 1.2 and 1.3 shipped before the revision and left dead surface behind: `TopicShiftDecision` and the `topicShift` / `topicShiftSimilarity` fields in `types.ts` (and their assertions in `context.test.ts`), plus `CACHE_TOPIC_SHIFT_THRESHOLD` in `config.ts`, `config.test.ts`, and `.env.example`. Delete all of it, and add `shadowError` to `CacheOutcome` per the revised design
   - Delete rather than deprecate. A threshold that configures nothing is a trap for the next reader, and leaving `topicShift` in the outcome type invites `telemetry-analytics` to consume a field that will never be populated
   - Observable: no `topicShift`, `TopicShiftDecision`, or `CACHE_TOPIC_SHIFT_THRESHOLD` remains anywhere in `src/` or `.env.example`; `CacheOutcome` matches the revised design; `npm run typecheck` and `npm test` pass

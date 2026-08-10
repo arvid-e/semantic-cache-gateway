@@ -7,21 +7,22 @@
   "revision": {
     "date": "2026-08-08",
     "summary": "Semantic layer moved to shadow mode after measurement. Req 5 (topic-shift detection) withdrawn; Req 6 reduced to an advisory instrument; Req 9 (false-hit benchmark) added. Evidence in research.md, Measurement Log E1-E4.",
-    "supersedes_approval": true
+    "supersedes_approval": true,
+    "reapproved_at": "2026-08-10T00:00:00Z"
   },
   "approvals": {
     "requirements": {
       "generated": true,
-      "approved": false
+      "approved": true
     },
     "design": {
       "generated": true,
-      "approved": false
+      "approved": true
     },
     "tasks": {
       "generated": true,
-      "approved": false
+      "approved": true
     }
   },
-  "ready_for_implementation": false
+  "ready_for_implementation": true
 }

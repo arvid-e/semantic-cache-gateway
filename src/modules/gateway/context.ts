@@ -5,8 +5,8 @@ import type { ChatCompletionRequest, ChatMessage, ChatRole } from './types.js';
  * This module *exposes* the conversation; it never interprets it. The two
  * derived turns are structural lookups — the last `user` turn and the last
  * `assistant` turn — with no notion of topics, similarity, or cache validity.
- * `dual-layer-caching` owns topic-shift detection and context-chain
- * verification and reads these fields as its input.
+ * `dual-layer-caching` reads these fields as the input to its semantic search
+ * and its advisory context-chain verdict.
  */
 
 // Declaration merging rather than an edit to the foundation's interface: the
